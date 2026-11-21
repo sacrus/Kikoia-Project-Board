@@ -7,3 +7,4 @@ dist/
 *.spec.bak
 *.log
 .env
+PENDENTES.md

@@ -15,13 +15,15 @@
   "instalacao": {
     "windows": {
       "tipo": "instalador",
-      "fonte": "https://gcompris.net/downloads-en.html",
-      "ficheiro": null
+      "fonte": "https://download.kde.org/stable/gcompris/qt/windows/gcompris-qt-26.2-win64-gcc.exe",
+      "ficheiro": "gcompris-qt-26.2-win64-gcc.exe",
+      "sha256": "d4427f2081a46e788acc8831292a664d82d08166679cf9f64a3504d6cda8ee9d"
     },
     "linux": {
       "tipo": "pacote_oficial",
-      "fonte": "https://gcompris.net/downloads-en.html",
-      "ficheiro": null
+      "fonte": "https://download.kde.org/stable/gcompris/qt/linux/gcompris-qt-26.2-Linux64.sh",
+      "ficheiro": "gcompris-qt-26.2-Linux64.sh",
+      "nota": "Hash ainda não registado; não usado pelo Quadro (Windows apenas)."
     }
   },
   "screenshots": []

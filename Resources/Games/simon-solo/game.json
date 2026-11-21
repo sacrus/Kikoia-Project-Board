@@ -16,7 +16,8 @@
     "windows": {
       "tipo": "executavel",
       "fonte": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/solo.exe",
-      "ficheiro": "solo.exe"
+      "ficheiro": "solo.exe",
+      "sha256": "26b01b71ca8eeac124aed7cbcc8975ab39f665b91cfa65583a440441cade0c60"
     },
     "linux": {
       "tipo": "pacote_distribuicao",

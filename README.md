@@ -21,3 +21,14 @@ Os jogos de terceiros **não são alojados aqui**: o `game.json` aponta para a f
 | Solo (Simon Tatham's Portable Puzzle Collection) | Simon Tatham e outros contribuidores | MIT |
 
 Os ficheiros de cada recurso indicam os seus próprios créditos.
+
+Lista completa das ferramentas externas, com licenças e obrigações ao distribuir: [CREDITOS.md](CREDITOS.md).
+
+## Recomendações para pais e educadores
+
+- **Controlo do correio só dentro do Quadro:** as regras aplicam-se ao programa do Quadro. Se a criança usar o webmail no navegador ou outro dispositivo, as regras não se aplicam. Usa também os controlos parentais do fornecedor do correio ou do sistema, quando existirem.
+- **Conta de correio própria para a criança:** não uses a conta principal do adulto. Assim, as regras controlam apenas o correio que a criança recebe e envia.
+- **Anexos executáveis:** ficheiros como `.exe`, `.bat`, `.ps1` ou `.msi` pedem sempre a palavra-passe de supervisor, mesmo de remetentes permitidos.
+- **Ligações:** só abrem texto de domínios aprovados. As restantes ficam marcadas como bloqueadas.
+- **Limitação atual:** as regras, a palavra-passe de supervisor e o ficheiro de regras ficam na pasta do próprio utilizador. Quem entra nessa conta consegue alterá-los. A alteração para uma pasta protegida está prevista e ainda não foi feita.
+- **Estado:** as regras do correio estão implementadas, mas a interface do correio ainda não está disponível nesta versão.
