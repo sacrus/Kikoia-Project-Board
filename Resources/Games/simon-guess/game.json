@@ -15,6 +15,10 @@
   "manual": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/guess.html",
   "fonte_oficial": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
   "modo": "ecra_completo",
+  "controlos": {
+    "rato": "aconselhado",
+    "teclado": "suportado"
+  },
   "instalacao": {
     "windows": {
       "tipo": "executavel",

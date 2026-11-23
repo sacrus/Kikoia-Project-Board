@@ -34,6 +34,9 @@ _ID = re.compile(r"[a-z0-9][a-z0-9-]{0,39}")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _NOME_FICHEIRO = re.compile(r"[A-Za-z0-9._-]{1,120}")
 TIPOS_INSTALACAO = ("executavel", "instalador")
+DISPOSITIVOS_CONTROLO = ("rato", "teclado", "caneta", "toque")
+NIVEIS_CONTROLO = ("necessario", "aconselhado", "suportado")
+_SINONIMOS_NIVEL = {"obrigatorio": "necessario"}
 
 
 class ErroCatalogo(RuntimeError):
@@ -63,6 +66,7 @@ class Jogo:
     fonte_oficial: str
     screenshots: list[str] = field(default_factory=list)
     instalacao_windows: Instalacao | None = None
+    controlos: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -187,8 +191,26 @@ def carregar_jogo(resumo: ResumoJogo, base: str | None = None, baixar: Callable 
         fonte_oficial=_https(_texto(dados, "fonte_oficial")),
         screenshots=[_caminho_seguro(s) for s in screenshots if isinstance(s, str)],
         instalacao_windows=_instalacao(dados.get("instalacao", {}).get("windows")),
+        controlos=_controlos(dados.get("controlos")),
     )
     return jogo
+
+
+def _controlos(dados: object) -> dict[str, str]:
+    """Lê e valida os dispositivos de entrada (rato, teclado, caneta, toque) e respetivo nível."""
+    if dados is None:
+        return {}
+    if not isinstance(dados, dict):
+        raise ErroCatalogo("catalogo.metadados_invalidos")
+    resultado: dict[str, str] = {}
+    for chave, valor in dados.items():
+        if chave not in DISPOSITIVOS_CONTROLO or not isinstance(valor, str):
+            raise ErroCatalogo("catalogo.metadados_invalidos")
+        nivel = _SINONIMOS_NIVEL.get(valor.strip().lower(), valor.strip().lower())
+        if nivel not in NIVEIS_CONTROLO:
+            raise ErroCatalogo("catalogo.metadados_invalidos")
+        resultado[chave] = nivel
+    return resultado
 
 
 def _instalacao(dados: object) -> Instalacao | None:

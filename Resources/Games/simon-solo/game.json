@@ -15,6 +15,10 @@
   "manual": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/solo.html",
   "fonte_oficial": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
   "modo": "ecra_completo",
+  "controlos": {
+    "rato": "aconselhado",
+    "teclado": "aconselhado"
+  },
   "instalacao": {
     "windows": {
       "tipo": "executavel",

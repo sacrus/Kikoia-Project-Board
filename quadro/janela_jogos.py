@@ -7,8 +7,8 @@ import threading
 from collections.abc import Callable
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtGui import QColor, QPainter, QPixmap
+from PySide6.QtCore import QObject, QPointF, QRectF, Qt, Signal
+from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QDialog,
     QFrame,
@@ -50,6 +50,109 @@ def _mensagem(erro: BaseException) -> str:
 
 def _ligacao(nome: str, url: str, cor: str) -> str:
     return f'<a href="{html.escape(url, quote=True)}" style="color:{cor}; text-decoration:none; font-weight:600;">{html.escape(nome)}</a>'
+
+
+_ROTULOS_CONTROLO = {
+    "rato": "Rato / Touchpad",
+    "teclado": "Teclado",
+    "caneta": "Caneta virtual",
+    "toque": "Ecrã de toque",
+}
+
+_ROTULOS_NIVEL = {
+    "necessario": "necessário",
+    "aconselhado": "aconselhado",
+    "suportado": "suportado",
+}
+
+
+def _icone_controlo(tipo: str, cor: str, tamanho: int = 16) -> QPixmap:
+    """Desenha um ícone vetorial nítido para o dispositivo de entrada (rato, teclado, caneta, toque)."""
+    pix = QPixmap(tamanho, tamanho)
+    pix.fill(Qt.GlobalColor.transparent)
+    p = QPainter(pix)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    c = QColor(cor)
+    caneta = QPen(c, 1.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+    p.setPen(caneta)
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    s = float(tamanho)
+
+    if tipo == "rato":
+        # Corpo do rato + divisoria dos botoes + roda
+        p.drawRoundedRect(QRectF(s * 0.25, s * 0.12, s * 0.50, s * 0.76), s * 0.24, s * 0.24)
+        p.drawLine(QPointF(s * 0.50, s * 0.14), QPointF(s * 0.50, s * 0.42))
+        p.drawLine(QPointF(s * 0.26, s * 0.44), QPointF(s * 0.74, s * 0.44))
+    elif tipo == "teclado":
+        # Moldura do teclado + duas filas de teclas + barra de espacos
+        p.drawRoundedRect(QRectF(s * 0.08, s * 0.22, s * 0.84, s * 0.56), s * 0.12, s * 0.12)
+        p.setBrush(c)
+        p.setPen(Qt.PenStyle.NoPen)
+        for linha_y in (0.35, 0.50):
+            for col_x in (0.20, 0.36, 0.52, 0.68):
+                p.drawRoundedRect(QRectF(s * col_x, s * linha_y, s * 0.10, s * 0.09), 1.0, 1.0)
+        p.drawRoundedRect(QRectF(s * 0.28, s * 0.64, s * 0.44, s * 0.08), 1.0, 1.0)
+    elif tipo == "caneta":
+        # Caneta stylus inclinada com ponta
+        p.drawLine(QPointF(s * 0.22, s * 0.78), QPointF(s * 0.76, s * 0.24))
+        p.drawLine(QPointF(s * 0.66, s * 0.14), QPointF(s * 0.86, s * 0.34))
+        p.drawLine(QPointF(s * 0.14, s * 0.86), QPointF(s * 0.28, s * 0.80))
+        p.drawLine(QPointF(s * 0.14, s * 0.86), QPointF(s * 0.20, s * 0.72))
+    elif tipo == "toque":
+        # Ecra / ondas de toque + indicador de dedo
+        p.drawArc(QRectF(s * 0.24, s * 0.10, s * 0.52, s * 0.52), 20 * 16, 140 * 16)
+        p.drawEllipse(QPointF(s * 0.50, s * 0.38), s * 0.11, s * 0.11)
+        p.drawLine(QPointF(s * 0.50, s * 0.49), QPointF(s * 0.50, s * 0.86))
+        p.drawLine(QPointF(s * 0.36, s * 0.72), QPointF(s * 0.50, s * 0.86))
+        p.drawLine(QPointF(s * 0.64, s * 0.72), QPointF(s * 0.50, s * 0.86))
+
+    p.end()
+    return pix
+
+
+def _criar_etiqueta_controlo(tipo: str, nivel: str, escuro: bool) -> QFrame:
+    """Cria uma etiqueta (pill) com ícone vetorial + texto legível para o dispositivo de entrada."""
+    nome = _ROTULOS_CONTROLO.get(tipo, tipo)
+    nivel_txt = _ROTULOS_NIVEL.get(nivel, nivel)
+
+    if nivel == "necessario":
+        bg = "rgba(234, 88, 12, 48)" if escuro else "rgba(234, 88, 12, 26)"
+        borda = "#FB923C" if escuro else "#EA580C"
+        cor_txt = "#FDBA74" if escuro else "#C2410C"
+        rotulo = f"{nome} · Necessário"
+    elif nivel == "aconselhado":
+        bg = "rgba(59, 130, 246, 36)" if escuro else "rgba(37, 99, 235, 20)"
+        borda = "rgba(96, 165, 250, 95)" if escuro else "rgba(37, 99, 235, 75)"
+        cor_txt = "#93C5FD" if escuro else "#1D4ED8"
+        rotulo = nome
+    else:
+        bg = "rgba(148, 163, 184, 28)" if escuro else "rgba(100, 116, 139, 18)"
+        borda = "rgba(148, 163, 184, 70)" if escuro else "rgba(100, 116, 139, 55)"
+        cor_txt = "#CBD5E1" if escuro else "#475569"
+        rotulo = nome
+
+    pill = QFrame()
+    pill.setStyleSheet(
+        f"QFrame {{ background: {bg}; border: 1px solid {borda}; border-radius: 9px; }}"
+    )
+    pill.setToolTip(f"{nome}: {nivel_txt}")
+    lay = QHBoxLayout(pill)
+    lay.setContentsMargins(7, 2, 8, 2)
+    lay.setSpacing(5)
+
+    lbl_ic = QLabel()
+    lbl_ic.setStyleSheet("background: transparent; border: none;")
+    lbl_ic.setPixmap(_icone_controlo(tipo, cor_txt, 14))
+    lbl_ic.setFixedSize(14, 14)
+
+    lbl_txt = QLabel(rotulo)
+    lbl_txt.setStyleSheet(
+        f"background: transparent; border: none; color: {cor_txt}; font-size: 11px; font-weight: 600;"
+    )
+
+    lay.addWidget(lbl_ic)
+    lay.addWidget(lbl_txt)
+    return pill
 
 
 def _miniatura_padrao(largura: int, altura: int, cor_fundo: str) -> QPixmap:
@@ -236,6 +339,13 @@ class _CartaoJogo(QFrame):
         self._resumo_txt.setObjectName("resumoJogo")
         self._resumo_txt.setWordWrap(True)
 
+        self._caixa_controlos = QWidget()
+        self._layout_controlos = QHBoxLayout(self._caixa_controlos)
+        self._layout_controlos.setContentsMargins(0, 2, 0, 0)
+        self._layout_controlos.setSpacing(6)
+        self._layout_controlos.addStretch(1)
+        self._caixa_controlos.setVisible(False)
+
         self._seta = QLabel("▸")
         self._seta.setObjectName("setaJogo")
         self._seta.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -251,6 +361,7 @@ class _CartaoJogo(QFrame):
         info_topo.setSpacing(4)
         info_topo.addLayout(linha_titulo)
         info_topo.addWidget(self._resumo_txt)
+        info_topo.addWidget(self._caixa_controlos)
 
         topo = QHBoxLayout()
         topo.setSpacing(14)
@@ -353,20 +464,52 @@ class _CartaoJogo(QFrame):
 
         self.atualizar_texto_e_estado(escuro)
 
+    def _atualizar_controlos(self, escuro: bool) -> None:
+        while self._layout_controlos.count() > 1:
+            item = self._layout_controlos.takeAt(0)
+            if item.widget() is not None:
+                item.widget().deleteLater()
+        if self.jogo is None or not self.jogo.controlos:
+            self._caixa_controlos.setVisible(False)
+            return
+        ordem_nivel = {"necessario": 0, "aconselhado": 1, "suportado": 2}
+        itens = sorted(
+            self.jogo.controlos.items(),
+            key=lambda par: (ordem_nivel.get(par[1], 9), catalogo.DISPOSITIVOS_CONTROLO.index(par[0])),
+        )
+        for tipo, nivel in itens:
+            pill = _criar_etiqueta_controlo(tipo, nivel, escuro)
+            self._layout_controlos.insertWidget(self._layout_controlos.count() - 1, pill)
+        self._caixa_controlos.setVisible(True)
+
     def atualizar_texto_e_estado(self, escuro: bool) -> None:
         if self.jogo is None:
             return
         jogo = self.jogo
+        self._atualizar_controlos(escuro)
         cor_link = "#60A5FA" if escuro else "#2563EB"
         escapar = html.escape
         linhas = [
             f"<p style='margin:0 0 8px 0;'>{escapar(jogo.descricao)}</p>",
+        ]
+        if jogo.controlos:
+            ordem_nivel = {"necessario": 0, "aconselhado": 1, "suportado": 2}
+            itens = sorted(
+                jogo.controlos.items(),
+                key=lambda par: (ordem_nivel.get(par[1], 9), catalogo.DISPOSITIVOS_CONTROLO.index(par[0])),
+            )
+            partes = [
+                f"{_ROTULOS_CONTROLO.get(t, t)} ({_ROTULOS_NIVEL.get(n, n)})"
+                for t, n in itens
+            ]
+            linhas.append(f"<p style='margin:0 0 8px 0;'><b>Como jogar:</b> {escapar(' · '.join(partes))}</p>")
+        linhas.extend([
             f"<p style='margin:0;'><b>Autores:</b> {escapar(', '.join(jogo.autores))}<br>",
             f"<b>Copyright:</b> {escapar(jogo.copyright)}<br>",
             f"<b>Licença:</b> {_ligacao(jogo.licenca, jogo.licenca_url, cor_link)} · "
             f"<b>Site:</b> {_ligacao(jogo.site, jogo.site, cor_link)} · "
             f"<b>Fonte:</b> {_ligacao('download oficial', jogo.fonte_oficial, cor_link)}</p>",
-        ]
+        ])
         if jogo.instalacao_windows is None:
             linhas.append("<p><i>Sem instalação para Windows nesta versão.</i></p>")
         self.texto_detalhe.setText("".join(linhas))

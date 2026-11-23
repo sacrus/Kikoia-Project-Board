@@ -3,7 +3,9 @@
   "nome": "GCompris",
   "publico": "Crianças",
   "descricao": "Conjunto de atividades educativas para crianças: lógica, memória, linguagem, matemática e outras áreas.",
-  "autores": ["Timothée Giet and others"],
+  "autores": [
+    "Timothée Giet and others"
+  ],
   "copyright": "Copyright 2000-2026 Timothée Giet and others",
   "licenca": "AGPL-3.0",
   "licenca_url": "https://www.gnu.org/licenses/agpl-3.0.html",
@@ -12,6 +14,11 @@
   "fonte_oficial": "https://gcompris.net/downloads-en.html",
   "versao_referencia": "26.2",
   "modo": "ecra_completo",
+  "controlos": {
+    "rato": "aconselhado",
+    "toque": "aconselhado",
+    "teclado": "suportado"
+  },
   "instalacao": {
     "windows": {
       "tipo": "instalador",
