@@ -1,0 +1,27 @@
+As ferramentas cjxl e djxl (pasta ferramentas) pertencem ao projeto libjxl (JPEG XL),
+versao 0.13.0, https://github.com/libjxl/libjxl, distribuidas sob a licenca BSD de 3 clausulas:
+
+Copyright (c) the JPEG XL Project Authors. Todos os direitos reservados.
+
+A redistribuicao e a utilizacao, em formato de codigo-fonte ou binario, com ou sem modificacao,
+sao permitidas desde que sejam cumpridas as seguintes condicoes:
+
+1. As redistribuicoes do codigo-fonte devem conservar o aviso de direitos de autor acima, esta
+   lista de condicoes e a seguinte nota de exoneracao.
+
+2. As redistribuicoes em formato binario devem reproduzir o aviso de direitos de autor acima, esta
+   lista de condicoes e a seguinte nota de exoneracao na documentacao e/ou noutros materiais
+   fornecidos com a distribuicao.
+
+3. Nem o nome do titular dos direitos de autor nem os nomes dos seus colaboradores podem ser usados
+   para endossar ou promover produtos derivados deste software sem autorizacao escrita previa.
+
+ESTE SOFTWARE E FORNECIDO PELOS TITULARES DOS DIREITOS DE AUTOR E PELOS COLABORADORES "TAL COMO
+ESTA", E QUALQUER GARANTIA EXPRESSA OU IMPLICITA, INCLUINDO, MAS NAO SE LIMITANDO A, AS GARANTIAS
+IMPLICITAS DE COMERCIALIZACAO E DE ADEQUACAO A UM FIM ESPECIFICO, ESTAO EXCLUIDAS. EM NENHUMA
+CIRCUNSTANCIA O TITULAR DOS DIREITOS DE AUTOR OU OS COLABORADORES SERAO RESPONSAVEIS POR QUALQUER
+DANO DIRETO, INDIRETO, INCIDENTAL, ESPECIAL, EXEMPLAR OU CONSEQUENTE (INCLUINDO, MAS NAO SE LIMITANDO
+A, A AQUISICAO DE BENS OU SERVICOS DE SUBSTITUICAO, A PERDA DE UTILIZACAO, DE DADOS OU DE LUCROS,
+OU A INTERRUPCAO DA ATIVIDADE), QUER SEJA CAUSADO E SOB QUALQUER TEORIA DE RESPONSABILIDADE, QUER
+CONTRATUAL, OBJETIVA OU DELITUAL (INCLUINDO NEGLIGENCIA OU OUTRA), RESULTANTE DE QUALQUER FORMA DA
+UTILIZACAO DESTE SOFTWARE, MESMO QUE TENHAM SIDO AVISADOS DA POSSIBILIDADE DE TAL DANO.

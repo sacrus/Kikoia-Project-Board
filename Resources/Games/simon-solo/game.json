@@ -1,0 +1,29 @@
+{
+  "id": "simon-solo",
+  "nome": "Solo",
+  "colecao": "Simon Tatham's Portable Puzzle Collection",
+  "publico": "Adolescentes",
+  "descricao": "Preencha a grelha para que cada linha, coluna e bloco contenha um de cada dígito.",
+  "autores": ["Simon Tatham", "outros contribuidores"],
+  "copyright": "Copyright 2004-2021 Simon Tatham (com contribuições de outros autores)",
+  "licenca": "MIT",
+  "licenca_url": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/licence.html",
+  "site": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+  "manual": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/solo.html",
+  "fonte_oficial": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+  "modo": "ecra_completo",
+  "instalacao": {
+    "windows": {
+      "tipo": "executavel",
+      "fonte": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/solo.exe",
+      "ficheiro": "solo.exe",
+      "sha256": "26b01b71ca8eeac124aed7cbcc8975ab39f665b91cfa65583a440441cade0c60"
+    },
+    "linux": {
+      "tipo": "pacote_distribuicao",
+      "nome_pacote": "sgt-puzzles",
+      "nota": "Confirmar disponibilidade por distribuição antes de publicar."
+    }
+  },
+  "screenshots": ["screenshots/thumb.png"]
+}

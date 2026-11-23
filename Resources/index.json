@@ -1,0 +1,15 @@
+{
+  "versao": 1,
+  "jogos": [
+    {
+      "id": "gcompris",
+      "pasta": "Games/gcompris",
+      "nome": "GCompris"
+    },
+    {
+      "id": "simon-solo",
+      "pasta": "Games/simon-solo",
+      "nome": "Solo"
+    }
+  ]
+}
