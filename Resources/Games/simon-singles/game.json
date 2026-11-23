@@ -1,0 +1,34 @@
+{
+  "id": "simon-singles",
+  "nome": "Singles",
+  "colecao": "Simon Tatham's Portable Puzzle Collection",
+  "publico": "Adolescentes",
+  "descricao": "Pinte números repetidos a preto para que cada linha e coluna tenha apenas números únicos e os brancos fiquem ligados.",
+  "autores": [
+    "Simon Tatham",
+    "outros contribuidores"
+  ],
+  "copyright": "Copyright 2004-2026 Simon Tatham (com contribuições de outros autores)",
+  "licenca": "MIT",
+  "licenca_url": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/licence.html",
+  "site": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+  "manual": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/singles.html",
+  "fonte_oficial": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+  "modo": "ecra_completo",
+  "instalacao": {
+    "windows": {
+      "tipo": "executavel",
+      "fonte": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/singles.exe",
+      "ficheiro": "singles.exe",
+      "sha256": "75c497a09fa44756e705106a82102e901e84736e91e5de5cdd9a5958e4a5fea6"
+    },
+    "linux": {
+      "tipo": "pacote_distribuicao",
+      "nome_pacote": "sgt-puzzles",
+      "nota": "Confirmar disponibilidade por distribuição antes de publicar."
+    }
+  },
+  "screenshots": [
+    "screenshots/thumb.png"
+  ]
+}

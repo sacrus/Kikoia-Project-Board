@@ -1,0 +1,34 @@
+{
+  "id": "simon-dominosa",
+  "nome": "Dominosa",
+  "colecao": "Simon Tatham's Portable Puzzle Collection",
+  "publico": "Adolescentes",
+  "descricao": "Coloque um conjunto completo de peças de dominó sobre a grelha de números sem repetir pares.",
+  "autores": [
+    "Simon Tatham",
+    "outros contribuidores"
+  ],
+  "copyright": "Copyright 2004-2026 Simon Tatham (com contribuições de outros autores)",
+  "licenca": "MIT",
+  "licenca_url": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/licence.html",
+  "site": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+  "manual": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/dominosa.html",
+  "fonte_oficial": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+  "modo": "ecra_completo",
+  "instalacao": {
+    "windows": {
+      "tipo": "executavel",
+      "fonte": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/dominosa.exe",
+      "ficheiro": "dominosa.exe",
+      "sha256": "f289f88a21c7ebd34640a0d49bd55cbddfcd91bc19450f3a58cc8e8fe08ed0b0"
+    },
+    "linux": {
+      "tipo": "pacote_distribuicao",
+      "nome_pacote": "sgt-puzzles",
+      "nota": "Confirmar disponibilidade por distribuição antes de publicar."
+    }
+  },
+  "screenshots": [
+    "screenshots/thumb.png"
+  ]
+}

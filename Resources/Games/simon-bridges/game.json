@@ -1,0 +1,34 @@
+{
+  "id": "simon-bridges",
+  "nome": "Bridges",
+  "colecao": "Simon Tatham's Portable Puzzle Collection",
+  "publico": "Adolescentes",
+  "descricao": "Ligue todas as ilhas com pontes para que cada ilha tenha o número exato de ligações indicado.",
+  "autores": [
+    "Simon Tatham",
+    "outros contribuidores"
+  ],
+  "copyright": "Copyright 2004-2026 Simon Tatham (com contribuições de outros autores)",
+  "licenca": "MIT",
+  "licenca_url": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/licence.html",
+  "site": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+  "manual": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/bridges.html",
+  "fonte_oficial": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+  "modo": "ecra_completo",
+  "instalacao": {
+    "windows": {
+      "tipo": "executavel",
+      "fonte": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/bridges.exe",
+      "ficheiro": "bridges.exe",
+      "sha256": "14e3576dae1de22c47ac92a9af457bf8e07c3a74369ae0d287a7c0dbcedc240c"
+    },
+    "linux": {
+      "tipo": "pacote_distribuicao",
+      "nome_pacote": "sgt-puzzles",
+      "nota": "Confirmar disponibilidade por distribuição antes de publicar."
+    }
+  },
+  "screenshots": [
+    "screenshots/thumb.png"
+  ]
+}

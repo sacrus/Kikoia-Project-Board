@@ -1,0 +1,34 @@
+{
+  "id": "simon-pegs",
+  "nome": "Pegs",
+  "colecao": "Simon Tatham's Portable Puzzle Collection",
+  "publico": "Adolescentes",
+  "descricao": "Salte com uma peça sobre outra para a remover, até restar apenas uma peça no centro.",
+  "autores": [
+    "Simon Tatham",
+    "outros contribuidores"
+  ],
+  "copyright": "Copyright 2004-2026 Simon Tatham (com contribuições de outros autores)",
+  "licenca": "MIT",
+  "licenca_url": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/licence.html",
+  "site": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+  "manual": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/pegs.html",
+  "fonte_oficial": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+  "modo": "ecra_completo",
+  "instalacao": {
+    "windows": {
+      "tipo": "executavel",
+      "fonte": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/pegs.exe",
+      "ficheiro": "pegs.exe",
+      "sha256": "d093bd486964bd19ccf6147800aa2ee0cfe13bfd19ea145df2ccc62cf904ecc7"
+    },
+    "linux": {
+      "tipo": "pacote_distribuicao",
+      "nome_pacote": "sgt-puzzles",
+      "nota": "Confirmar disponibilidade por distribuição antes de publicar."
+    }
+  },
+  "screenshots": [
+    "screenshots/thumb.png"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "id": "simon-mines",
+  "nome": "Mines",
+  "colecao": "Simon Tatham's Portable Puzzle Collection",
+  "publico": "Adolescentes",
+  "descricao": "Abra todos os quadrados seguros evitando as minas escondidas, usando os números como pistas.",
+  "autores": [
+    "Simon Tatham",
+    "outros contribuidores"
+  ],
+  "copyright": "Copyright 2004-2026 Simon Tatham (com contribuições de outros autores)",
+  "licenca": "MIT",
+  "licenca_url": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/licence.html",
+  "site": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+  "manual": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/mines.html",
+  "fonte_oficial": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+  "modo": "ecra_completo",
+  "instalacao": {
+    "windows": {
+      "tipo": "executavel",
+      "fonte": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/mines.exe",
+      "ficheiro": "mines.exe",
+      "sha256": "3ba695d8bccac02cb9e6d63e630b50be15b729a952769814bbb684f9c9f096f3"
+    },
+    "linux": {
+      "tipo": "pacote_distribuicao",
+      "nome_pacote": "sgt-puzzles",
+      "nota": "Confirmar disponibilidade por distribuição antes de publicar."
+    }
+  },
+  "screenshots": [
+    "screenshots/thumb.png"
+  ]
+}

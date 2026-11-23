@@ -46,6 +46,7 @@ class Instalacao:
     url: str
     ficheiro: str
     sha256: str
+    executavel: str | None = None
 
 
 @dataclass
@@ -202,7 +203,10 @@ def _instalacao(dados: object) -> Instalacao | None:
         raise ErroCatalogo("catalogo.metadados_invalidos")
     if not _SHA256.fullmatch(sha256):
         raise ErroCatalogo("catalogo.metadados_invalidos")
-    return Instalacao(tipo, _https(_texto(dados, "fonte")), ficheiro, sha256)
+    executavel = dados.get("executavel")
+    if executavel is not None and (not isinstance(executavel, str) or not _NOME_FICHEIRO.fullmatch(executavel)):
+        raise ErroCatalogo("catalogo.metadados_invalidos")
+    return Instalacao(tipo, _https(_texto(dados, "fonte")), ficheiro, sha256, executavel)
 
 
 def miniatura(jogo: Jogo, cache: Path, base: str | None = None, baixar: Callable | None = None) -> Path | None:
@@ -224,6 +228,86 @@ def instalado(jogo: Jogo, pasta: Path | None = None) -> Path | None:
         return None
     caminho = pasta_jogos(pasta) / jogo.id / jogo.instalacao_windows.ficheiro
     return caminho if caminho.is_file() else None
+
+
+def _pastas_instalacao_windows(jogo: Jogo) -> list[Path]:
+    """Pastas onde um programa instalado no Windows pode estar (Program Files, AppData e Registo)."""
+    candidatas: list[Path] = []
+    nomes_pasta = [jogo.nome, f"{jogo.nome}-Qt", jogo.id]
+    for var in ("ProgramFiles", "ProgramFiles(x86)"):
+        raiz = os.environ.get(var)
+        if raiz:
+            for nome in nomes_pasta:
+                candidatas.append(Path(raiz) / nome)
+                candidatas.append(Path(raiz) / nome / "bin")
+    local = os.environ.get("LOCALAPPDATA")
+    if local:
+        for nome in nomes_pasta:
+            candidatas.append(Path(local) / "Programs" / nome)
+            candidatas.append(Path(local) / "Programs" / nome / "bin")
+            candidatas.append(Path(local) / nome)
+            candidatas.append(Path(local) / nome / "bin")
+
+    if sys.platform == "win32":
+        try:
+            import winreg
+
+            alvo = jogo.id.lower()
+            nome_alvo = jogo.nome.lower()
+            raizes = (
+                (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+                (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+                (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+            )
+            for hive, sub in raizes:
+                try:
+                    with winreg.OpenKey(hive, sub) as chave:
+                        total = winreg.QueryInfoKey(chave)[0]
+                        for i in range(total):
+                            try:
+                                nome_sub = winreg.EnumKey(chave, i)
+                                with winreg.OpenKey(chave, nome_sub) as item:
+                                    display = ""
+                                    try:
+                                        display = str(winreg.QueryValueEx(item, "DisplayName")[0]).lower()
+                                    except OSError:
+                                        pass
+                                    if alvo not in display and nome_alvo not in display and alvo not in nome_sub.lower():
+                                        continue
+                                    for campo in ("InstallLocation", "DisplayIcon"):
+                                        try:
+                                            val = str(winreg.QueryValueEx(item, campo)[0]).strip().strip('"').split(",")[0]
+                                        except OSError:
+                                            continue
+                                        if not val:
+                                            continue
+                                        p = Path(val)
+                                        pasta_cand = p.parent if p.suffix.lower() == ".exe" else p
+                                        candidatas.append(pasta_cand)
+                                        candidatas.append(pasta_cand / "bin")
+                            except OSError:
+                                continue
+                except OSError:
+                    continue
+        except Exception:
+            pass
+    return candidatas
+
+
+def executavel_instalado(jogo: Jogo, pastas_extra: list[Path] | None = None) -> Path | None:
+    """Devolve o executável do jogo já instalado no sistema (ex.: GCompris.exe), se encontrado."""
+    inst = jogo.instalacao_windows
+    if inst is None or inst.tipo != "instalador":
+        return None
+    nome_exe = inst.executavel or (f"{jogo.nome}.exe" if jogo.id == "gcompris" else None)
+    if not nome_exe:
+        return None
+    pastas = list(pastas_extra) if pastas_extra is not None else _pastas_instalacao_windows(jogo)
+    for pasta in pastas:
+        candidato = pasta / nome_exe
+        if candidato.is_file():
+            return candidato
+    return None
 
 
 def _sha256(caminho: Path) -> str:

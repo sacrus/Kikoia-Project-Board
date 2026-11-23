@@ -19,7 +19,7 @@ from pathlib import Path
 import base64
 
 from PySide6.QtCore import QBuffer, QEvent, QIODevice, QObject, QPoint, QSize, QStringListModel, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QIcon, QImage, QPixmap, QTextCursor, QTextDocument, QTextImageFormat, QTextListFormat
+from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPixmap, QTextCursor, QTextDocument, QTextImageFormat, QTextListFormat
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QDialog,
     QFormLayout,
+    QFrame,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -47,7 +48,7 @@ from quadro.correio import contas, oauth, supervisor, voz
 from quadro.correio import regras as R
 from quadro.correio.html import CID_PREFIXO, sanitizar_html
 from quadro.correio.modelo import Anexo, Conta, ErroCorreio, Mensagem, conta_cpanel
-from quadro import icones_contacto, icones_correio, jxl
+from quadro import icones_contacto, icones_correio, jxl, tema_partilhado
 from quadro.correio import composicao, ordenacao
 from quadro.correio.composicao import Rascunho
 from quadro.correio.servidor import Pasta, cliente_de, guardar_em_enviados, montar_mensagem
@@ -217,11 +218,255 @@ def _palavra_passe_nova(pai: QWidget) -> str | None:
     return primeira
 
 
+def _icone_colorido(nome: str, cor: str, tamanho: int = 20) -> QIcon:
+    pix = icones_correio.desenhar(nome, tamanho)
+    img = pix.toImage().convertToFormat(QImage.Format.Format_ARGB32)
+    p = QPainter(img)
+    p.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+    p.fillRect(img.rect(), QColor(cor))
+    p.end()
+    return QIcon(QPixmap.fromImage(img))
+
+
+def _estilo_correio(escuro: bool) -> str:
+    if escuro:
+        fundo = "#0F131C"
+        barra_lat = "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #141B2D, stop:1 #0D121F)"
+        painel_lista = "#151A25"
+        painel_leitura = "#191F2C"
+        cartao = "#202736"
+        campo = "#252D3F"
+        texto = "#F1F5F9"
+        texto_sec = "#CBD5E1"
+        texto_suave = "#94A3B8"
+        borda = "#2E374B"
+        sel_bg = "#2563EB"
+        sel_txt = "#FFFFFF"
+        hover_lista = "#232B3D"
+        btn_bg = "#232B3D"
+        btn_hover = "#2E3950"
+        btn_txt = "#E2E8F0"
+    else:
+        fundo = "#E2E8F0"
+        barra_lat = "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #1D4ED8, stop:1 #1E3A8A)"
+        painel_lista = "#EBF2FC"
+        painel_leitura = "#F8FAFC"
+        cartao = "#FFFFFF"
+        campo = "#FFFFFF"
+        texto = "#0F172A"
+        texto_sec = "#1E293B"
+        texto_suave = "#64748B"
+        borda = "#CBD5E1"
+        sel_bg = "#38BDF8"
+        sel_txt = "#FFFFFF"
+        hover_lista = "#DCE9F9"
+        btn_bg = "#FFFFFF"
+        btn_hover = "#EFF6FF"
+        btn_txt = "#1E293B"
+
+    return f"""
+QDialog {{
+    background-color: {fundo};
+    color: {texto};
+}}
+QFrame#barraLateral {{
+    background: {barra_lat};
+    border: none;
+}}
+QFrame#barraLateral QLabel {{
+    color: rgba(255, 255, 255, 200);
+    font-size: 11px;
+    font-weight: 700;
+}}
+QFrame#barraLateral QLabel#tituloCorreio {{
+    color: #FFFFFF;
+    font-size: 18px;
+    font-weight: 700;
+}}
+QFrame#barraLateral QPushButton {{
+    background-color: rgba(255, 255, 255, 22);
+    color: #FFFFFF;
+    border: 1px solid rgba(255, 255, 255, 36);
+    border-radius: 9px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+}}
+QFrame#barraLateral QPushButton:hover {{
+    background-color: rgba(255, 255, 255, 42);
+}}
+QFrame#barraLateral QPushButton#btnEscrever {{
+    background-color: #38BDF8;
+    color: #0B192C;
+    border: none;
+    font-weight: 700;
+}}
+QFrame#barraLateral QPushButton#btnEscrever:hover {{
+    background-color: #7DD3FC;
+}}
+QFrame#barraLateral QPushButton#btnTema {{
+    background-color: rgba(255, 255, 255, 28);
+    color: #FFFFFF;
+    border: 1px solid rgba(255, 255, 255, 45);
+    border-radius: 14px;
+    padding: 3px 10px;
+    font-size: 12px;
+    text-align: center;
+}}
+QFrame#barraLateral QComboBox {{
+    background-color: rgba(255, 255, 255, 26);
+    color: #FFFFFF;
+    border: 1px solid rgba(255, 255, 255, 45);
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-size: 9.5pt;
+}}
+QFrame#barraLateral QComboBox QAbstractItemView {{
+    background-color: {cartao};
+    color: {texto};
+    font-size: 9.5pt;
+    selection-background-color: #2563EB;
+    selection-color: #FFFFFF;
+}}
+QFrame#painelLista {{
+    background-color: {painel_lista};
+    border-right: 1px solid {borda};
+}}
+QFrame#painelLista QLineEdit, QFrame#painelLista QComboBox {{
+    background-color: {campo};
+    color: {texto};
+    border: 1px solid {borda};
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-size: 9.5pt;
+}}
+QFrame#painelLista QComboBox QAbstractItemView {{
+    background-color: {cartao};
+    color: {texto};
+    font-size: 9.5pt;
+    selection-background-color: {sel_bg};
+    selection-color: {sel_txt};
+}}
+QFrame#painelLista QPushButton {{
+    background-color: {btn_bg};
+    color: {btn_txt};
+    border: 1px solid {borda};
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+}}
+QFrame#painelLista QPushButton:hover {{
+    background-color: {btn_hover};
+}}
+QListWidget#listaMensagens {{
+    background-color: transparent;
+    color: {texto};
+    border: none;
+    outline: none;
+    font-size: 13px;
+}}
+QListWidget#listaMensagens::item {{
+    background-color: {cartao};
+    color: {texto};
+    border: 1px solid {borda};
+    border-radius: 10px;
+    padding: 9px 10px;
+    margin: 3px 0px;
+}}
+QListWidget#listaMensagens::item:hover {{
+    background-color: {hover_lista};
+}}
+QListWidget#listaMensagens::item:selected {{
+    background-color: {sel_bg};
+    color: {sel_txt};
+    border-color: {sel_bg};
+}}
+QFrame#painelLeitura {{
+    background-color: {painel_leitura};
+}}
+QFrame#barraAcoes {{
+    background-color: {cartao};
+    border-bottom: 1px solid {borda};
+}}
+QFrame#barraAcoes QPushButton {{
+    background-color: transparent;
+    color: {btn_txt};
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 5px 9px;
+    font-size: 12px;
+    font-weight: 600;
+}}
+QFrame#barraAcoes QPushButton:hover {{
+    background-color: {btn_hover};
+    border-color: {borda};
+}}
+QFrame#barraAcoes QPushButton:disabled {{
+    color: {texto_suave};
+}}
+QFrame#cartaoCabecalho {{
+    background-color: {cartao};
+    border: 1px solid {borda};
+    border-radius: 12px;
+}}
+QFrame#cartaoCabecalho QLabel {{
+    color: {texto};
+    font-size: 13px;
+}}
+QFrame#caixaAnexos {{
+    background-color: {painel_leitura};
+    border: 1px solid {borda};
+    border-radius: 9px;
+}}
+QListWidget#listaAnexos {{
+    background-color: transparent;
+    color: {texto_sec};
+    border: none;
+    font-size: 11px;
+}}
+QListWidget#listaAnexos::item {{
+    padding: 2px 4px;
+    border-radius: 5px;
+}}
+QListWidget#listaAnexos::item:selected {{
+    background-color: #2563EB;
+    color: #FFFFFF;
+}}
+QPushButton#btnAbrirAnexo {{
+    background-color: {btn_bg};
+    color: {btn_txt};
+    border: 1px solid {borda};
+    border-radius: 7px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+}}
+QPushButton#btnAbrirAnexo:hover {{
+    background-color: {btn_hover};
+}}
+QTextEdit#corpoEmail {{
+    background-color: {cartao};
+    color: {texto};
+    border: 1px solid {borda};
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 14px;
+}}
+QLabel#estadoCorreio {{
+    color: {texto_suave};
+    font-size: 12px;
+    padding: 2px 4px;
+}}
+"""
+
+
 class DialogoCorreio(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Correio")
-        self.resize(980, 620)
+        self.resize(1180, 720)
         self._conta: tuple[Conta, str] | None = contas.carregar()
         self._regras, self._integras = R.carregar()
         self._mensagens: list[Mensagem] = []
@@ -232,61 +477,77 @@ class DialogoCorreio(QDialog):
         self._visoes: list[R.Visao] = []
         self._desbloqueadas: set[str] = set()
         self._ocupado = False
+        self._escuro = tema_partilhado.e_escuro()
 
         self._lista = QListWidget()
-        self._lista.setMinimumWidth(320)
+        self._lista.setObjectName("listaMensagens")
+        self._lista.setMinimumWidth(260)
         self._lista.currentRowChanged.connect(self._mostrar_selecionada)
         self._previa_passar = _PreviaAoPassar(self._lista, self._contacto_da_linha)
         self._seletor_contas = QComboBox()
-        self._seletor_contas.setMinimumWidth(320)
         self._seletor_contas.currentIndexChanged.connect(self._mudar_conta)
         self._seletor_pastas = QComboBox()
-        self._seletor_pastas.setMinimumWidth(320)
         self._seletor_pastas.currentIndexChanged.connect(self._mudar_pasta)
         self._cabecalho = QLabel("")
         self._cabecalho.setWordWrap(True)
         self._texto = QTextEdit()
+        self._texto.setObjectName("corpoEmail")
         self._texto.setReadOnly(True)
         self._anexos = QListWidget()
-        self._anexos.setMaximumHeight(120)
+        self._anexos.setObjectName("listaAnexos")
+        self._anexos.setMaximumHeight(64)
         self._estado = QLabel("")
+        self._estado.setObjectName("estadoCorreio")
         self._estado.setWordWrap(True)
 
         self._atualizar = botao_com_icone("Atualizar", "atualizar")
         self._atualizar.clicked.connect(lambda _=False: self.atualizar())
-        self._voz = botao_com_icone("Ler em voz alta", "voz")
+        self._voz = botao_com_icone("Ler", "voz")
+        self._voz.setToolTip("Ler em voz alta")
         self._voz.clicked.connect(lambda _=False: self._ler_em_voz_alta())
-        self._parar_voz = botao_com_icone("Parar leitura", "parar")
+        self._parar_voz = botao_com_icone("Parar", "parar")
+        self._parar_voz.setToolTip("Parar leitura")
         self._parar_voz.clicked.connect(lambda _=False: voz.parar())
-        self._desbloquear = botao_com_icone("Desbloquear com supervisor...", "desbloquear")
+        self._desbloquear = botao_com_icone("Desbloquear...", "desbloquear")
+        self._desbloquear.setToolTip("Desbloquear com supervisor...")
         self._desbloquear.clicked.connect(lambda _=False: self._desbloquear_mensagem())
-        self._adicionar = botao_com_icone("Permitir este remetente...", "permitir")
+        self._adicionar = botao_com_icone("Permitir...", "permitir")
+        self._adicionar.setToolTip("Permitir este remetente...")
         self._adicionar.clicked.connect(lambda _=False: self._permitir_remetente())
         self._escrever = botao_com_icone("Escrever...", "escrever")
+        self._escrever.setObjectName("btnEscrever")
         self._escrever.clicked.connect(lambda _=False: self._abrir_escrever())
         self._configurar = botao_com_icone("Configurar...", "configurar")
         self._configurar.clicked.connect(lambda _=False: self._abrir_configurar())
         self._contactos = botao_com_icone("Contactos...", "pessoa")
         self._contactos.clicked.connect(lambda _=False: DialogoContactos(self).exec())
-        self._guardar_contacto = botao_com_icone("Guardar remetente como contacto", "pessoa")
+        self._guardar_contacto = botao_com_icone("Guardar contacto", "pessoa")
+        self._guardar_contacto.setToolTip("Guardar remetente como contacto")
         self._guardar_contacto.clicked.connect(lambda _=False: self._guardar_remetente())
         self._botao_anexo = botao_com_icone("Abrir anexo", "anexar")
+        self._botao_anexo.setObjectName("btnAbrirAnexo")
         self._botao_anexo.clicked.connect(lambda _=False: self._abrir_anexo())
-        self._apagar = botao_com_icone("Apagar email", "apagar")
+        self._apagar = botao_com_icone("Apagar", "apagar")
+        self._apagar.setToolTip("Apagar email")
         self._apagar.clicked.connect(lambda _=False: self._apagar_mensagem())
         self._responder = botao_com_icone("Responder", "responder")
         self._responder.clicked.connect(lambda _=False: self._responder_a(False))
-        self._responder_todos = botao_com_icone("Responder a todos", "responder_todos")
+        self._responder_todos = botao_com_icone("A todos", "responder_todos")
+        self._responder_todos.setToolTip("Responder a todos")
         self._responder_todos.clicked.connect(lambda _=False: self._responder_a(True))
         self._encaminhar = botao_com_icone("Encaminhar", "encaminhar")
         self._encaminhar.clicked.connect(lambda _=False: self._encaminhar_mensagem())
-        self._editar_rascunho = botao_com_icone("Editar rascunho", "rascunho")
+        self._editar_rascunho = botao_com_icone("Rascunho", "rascunho")
+        self._editar_rascunho.setToolTip("Editar rascunho")
         self._editar_rascunho.clicked.connect(lambda _=False: self._editar_rascunho_mensagem())
-        self._lido = botao_com_icone("Marcar como lido", "lido")
+        self._lido = botao_com_icone("Lido", "lido")
+        self._lido.setToolTip("Marcar como lido / não lido")
         self._lido.clicked.connect(lambda _=False: self._alternar_lida())
-        self._estrela = botao_com_icone("Marcar com estrela", "estrela")
+        self._estrela = botao_com_icone("Estrela", "estrela")
+        self._estrela.setToolTip("Marcar com estrela")
         self._estrela.clicked.connect(lambda _=False: self._alternar_estrela())
-        self._mover = botao_com_icone("Mover para...", "mover")
+        self._mover = botao_com_icone("Mover...", "mover")
+        self._mover.setToolTip("Mover para...")
         self._mover.clicked.connect(lambda _=False: self._mover_mensagem())
         self._acoes_mensagem = (
             self._responder, self._responder_todos, self._encaminhar, self._editar_rascunho,
@@ -295,61 +556,143 @@ class DialogoCorreio(QDialog):
         fechar = QPushButton("Fechar")
         fechar.clicked.connect(self.accept)
 
-        botoes = QHBoxLayout()
-        for botao in (self._atualizar, self._escrever, self._contactos, self._configurar):
-            botoes.addWidget(botao)
-        botoes.addStretch(1)
-        botoes.addWidget(fechar)
+        # --- Painel 1: Barra lateral esquerda (contas, pastas, acoes globais) ---
+        barra_lateral = QFrame()
+        barra_lateral.setObjectName("barraLateral")
+        barra_lateral.setFixedWidth(226)
+        lat_layout = QVBoxLayout(barra_lateral)
+        lat_layout.setContentsMargins(14, 16, 14, 14)
+        lat_layout.setSpacing(10)
 
-        direita = QVBoxLayout()
-        direita.addWidget(self._cabecalho)
-        direita.addWidget(self._texto, 1)
-        direita.addWidget(QLabel("Anexos"))
-        direita.addWidget(self._anexos)
-        acoes = QHBoxLayout()
-        for botao in (self._voz, self._parar_voz, self._botao_anexo, self._apagar, self._desbloquear, self._adicionar, self._guardar_contacto):
-            acoes.addWidget(botao)
-        direita.addLayout(acoes)
-        acoes_mensagem = QHBoxLayout()
-        for botao in self._acoes_mensagem:
-            acoes_mensagem.addWidget(botao)
-        acoes_mensagem.addStretch(1)
-        direita.addLayout(acoes_mensagem)
-        direita.addWidget(self._estado)
+        lbl_titulo = QLabel("Correio")
+        lbl_titulo.setObjectName("tituloCorreio")
+        lat_layout.addWidget(lbl_titulo)
+        lat_layout.addWidget(self._escrever)
+        lat_layout.addWidget(self._atualizar)
+        lat_layout.addSpacing(6)
+        lat_layout.addWidget(QLabel("CONTA"))
+        lat_layout.addWidget(self._seletor_contas)
+        lat_layout.addWidget(QLabel("PASTA"))
+        lat_layout.addWidget(self._seletor_pastas)
+        lat_layout.addStretch(1)
+        lat_layout.addWidget(self._contactos)
+        lat_layout.addWidget(self._configurar)
 
-        self._menu = interruptor("Adicionar ao Menu", contas.preferencias()["bolha"])
+        self._menu = interruptor("No menu", contas.preferencias()["bolha"])
+        self._menu.setToolTip("Mostrar ou ocultar o botão de Correio no menu do Quadro")
         self._menu.toggled.connect(self._alterar_menu)
-        topo = QHBoxLayout()
-        topo.addStretch(1)
-        topo.addWidget(self._menu)
-        raiz = QVBoxLayout(self)
-        raiz.addLayout(topo)
-        esquerda = QVBoxLayout()
-        esquerda.addWidget(self._seletor_contas)
-        esquerda.addWidget(self._seletor_pastas)
+        lat_layout.addWidget(self._menu)
+        lat_layout.addWidget(fechar)
+
+        # --- Painel 2: Coluna central (pesquisa, ordenacao e lista de emails) ---
+        painel_lista = QFrame()
+        painel_lista.setObjectName("painelLista")
+        painel_lista.setMinimumWidth(290)
+        painel_lista.setMaximumWidth(370)
+        lista_layout = QVBoxLayout(painel_lista)
+        lista_layout.setContentsMargins(10, 12, 10, 12)
+        lista_layout.setSpacing(8)
+
         pesquisa = QHBoxLayout()
+        pesquisa.setSpacing(4)
         self._pesquisa = QLineEdit()
         self._pesquisa.setPlaceholderText("Pesquisar no correio...")
         self._pesquisa.returnPressed.connect(self._pesquisar)
-        pesquisar = QPushButton("Pesquisar")
+        pesquisar = QPushButton("Ir")
+        pesquisar.setToolTip("Pesquisar")
         pesquisar.clicked.connect(lambda _=False: self._pesquisar())
-        limpar_pesquisa = QPushButton("Limpar")
+        limpar_pesquisa = QPushButton("✕")
+        limpar_pesquisa.setToolTip("Limpar pesquisa")
         limpar_pesquisa.clicked.connect(lambda _=False: self._limpar_pesquisa())
-        for botao in (self._pesquisa, pesquisar, limpar_pesquisa):
-            pesquisa.addWidget(botao)
+        pesquisa.addWidget(self._pesquisa, 1)
+        pesquisa.addWidget(pesquisar)
+        pesquisa.addWidget(limpar_pesquisa)
+
         self._ordem = QComboBox()
         for chave, rotulo in ordenacao.CRITERIOS:
             self._ordem.addItem(rotulo, chave)
         self._ordem.currentIndexChanged.connect(lambda _=False: self._aplicar_ordem())
-        esquerda.addWidget(self._ordem)
-        esquerda.addLayout(pesquisa)
-        esquerda.addWidget(self._lista, 1)
-        conteudo = QHBoxLayout()
-        conteudo.addLayout(esquerda)
-        conteudo.addLayout(direita, 1)
-        raiz.addLayout(conteudo, 1)
-        raiz.addLayout(botoes)
 
+        lista_layout.addLayout(pesquisa)
+        lista_layout.addWidget(self._ordem)
+        lista_layout.addWidget(self._lista, 1)
+
+        # --- Painel 3: Area de leitura (barra de acoes + cabecalho/anexos + corpo amplo) ---
+        painel_leitura = QFrame()
+        painel_leitura.setObjectName("painelLeitura")
+        leitura_layout = QVBoxLayout(painel_leitura)
+        leitura_layout.setContentsMargins(0, 0, 0, 10)
+        leitura_layout.setSpacing(0)
+
+        # Barra superior de acoes da mensagem
+        barra_acoes = QFrame()
+        barra_acoes.setObjectName("barraAcoes")
+        acoes_v = QVBoxLayout(barra_acoes)
+        acoes_v.setContentsMargins(12, 8, 12, 8)
+        acoes_v.setSpacing(4)
+
+        linha_acoes_1 = QHBoxLayout()
+        linha_acoes_1.setSpacing(4)
+        for botao in (
+            self._responder, self._responder_todos, self._encaminhar, self._editar_rascunho,
+            self._lido, self._estrela, self._mover, self._apagar,
+        ):
+            linha_acoes_1.addWidget(botao)
+        linha_acoes_1.addStretch(1)
+
+        linha_acoes_2 = QHBoxLayout()
+        linha_acoes_2.setSpacing(4)
+        for botao in (self._voz, self._parar_voz, self._guardar_contacto, self._desbloquear, self._adicionar):
+            linha_acoes_2.addWidget(botao)
+        linha_acoes_2.addStretch(1)
+
+        acoes_v.addLayout(linha_acoes_1)
+        acoes_v.addLayout(linha_acoes_2)
+        leitura_layout.addWidget(barra_acoes)
+
+        # Conteudo interno da leitura (cabecalho + anexos compactos ao lado + corpo grande)
+        zona_email = QVBoxLayout()
+        zona_email.setContentsMargins(14, 12, 14, 0)
+        zona_email.setSpacing(10)
+
+        cartao_cabecalho = QFrame()
+        cartao_cabecalho.setObjectName("cartaoCabecalho")
+        cab_layout = QHBoxLayout(cartao_cabecalho)
+        cab_layout.setContentsMargins(14, 10, 12, 10)
+        cab_layout.setSpacing(12)
+        cab_layout.addWidget(self._cabecalho, 3)
+
+        # Bloco compacto e discreto de anexos ao lado das informacoes de proveniencia
+        self._caixa_anexos = QFrame()
+        self._caixa_anexos.setObjectName("caixaAnexos")
+        self._caixa_anexos.setMaximumWidth(280)
+        self._caixa_anexos.setVisible(False)
+        anx_layout = QVBoxLayout(self._caixa_anexos)
+        anx_layout.setContentsMargins(8, 6, 8, 6)
+        anx_layout.setSpacing(4)
+        anx_topo = QHBoxLayout()
+        lbl_anx = QLabel("Anexos")
+        lbl_anx.setStyleSheet("font-size: 11px; font-weight: 700;")
+        anx_topo.addWidget(lbl_anx)
+        anx_topo.addStretch(1)
+        anx_topo.addWidget(self._botao_anexo)
+        anx_layout.addLayout(anx_topo)
+        anx_layout.addWidget(self._anexos)
+        cab_layout.addWidget(self._caixa_anexos, 2)
+
+        zona_email.addWidget(cartao_cabecalho)
+        zona_email.addWidget(self._texto, 1)
+        zona_email.addWidget(self._estado)
+        leitura_layout.addLayout(zona_email, 1)
+
+        raiz = QHBoxLayout(self)
+        raiz.setContentsMargins(0, 0, 0, 0)
+        raiz.setSpacing(0)
+        raiz.addWidget(barra_lateral)
+        raiz.addWidget(painel_lista)
+        raiz.addWidget(painel_leitura, 1)
+
+        self._aplicar_tema_correio()
         self._preencher_contas()
         self._atualizar_estado_botoes()
         if self._conta is None:
@@ -358,6 +701,38 @@ class DialogoCorreio(QDialog):
             self._estado.setText(MENSAGENS["correio.regras_alteradas"])
         else:
             self.atualizar()
+
+    def _aplicar_tema_correio(self) -> None:
+        self.setStyleSheet(_estilo_correio(self._escuro))
+        if hasattr(self._menu, "definir_cor_texto"):
+            self._menu.definir_cor_texto("#FFFFFF")
+        # Icones sempre brancos na barra lateral escura/azul
+        for botao, nome in (
+            (self._atualizar, "atualizar"),
+            (self._contactos, "pessoa"),
+            (self._configurar, "configurar"),
+        ):
+            botao.setIcon(_icone_colorido(nome, "#FFFFFF"))
+        self._escrever.setIcon(_icone_colorido("escrever", "#0B192C"))
+        # Icones da barra de acoes acompanham o tema claro/escuro
+        cor_acoes = "#E2E8F0" if self._escuro else "#1E293B"
+        for botao, nome in (
+            (self._responder, "responder"),
+            (self._responder_todos, "responder_todos"),
+            (self._encaminhar, "encaminhar"),
+            (self._editar_rascunho, "rascunho"),
+            (self._lido, "lido"),
+            (self._estrela, "estrela"),
+            (self._mover, "mover"),
+            (self._apagar, "apagar"),
+            (self._voz, "voz"),
+            (self._parar_voz, "parar"),
+            (self._guardar_contacto, "pessoa"),
+            (self._desbloquear, "desbloquear"),
+            (self._adicionar, "permitir"),
+            (self._botao_anexo, "anexar"),
+        ):
+            botao.setIcon(_icone_colorido(nome, cor_acoes))
 
     # --- estado da janela -----------------------------------------------------------
 
@@ -569,6 +944,7 @@ class DialogoCorreio(QDialog):
             self._cabecalho.setText("")
             self._texto.clear()
             self._anexos.clear()
+            self._caixa_anexos.setVisible(False)
             return
         self._cabecalho.setTextFormat(Qt.TextFormat.RichText)
         linha = self._lista.currentRow()
@@ -603,6 +979,7 @@ class DialogoCorreio(QDialog):
                 partes.append("executável")
             estado = f" ({', '.join(partes)})" if partes else ""
             self._anexos.addItem(f"{anexo.nome} ({anexo.tamanho // 1024} KB){estado}")
+        self._caixa_anexos.setVisible(bool(visao.anexos))
 
     def _contacto_da_linha(self, linha: int) -> dict | None:
         """O contacto que enviou a mensagem desta linha, se estiver na lista de contactos."""

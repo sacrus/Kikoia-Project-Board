@@ -17,7 +17,8 @@
       "tipo": "instalador",
       "fonte": "https://download.kde.org/stable/gcompris/qt/windows/gcompris-qt-26.2-win64-gcc.exe",
       "ficheiro": "gcompris-qt-26.2-win64-gcc.exe",
-      "sha256": "d4427f2081a46e788acc8831292a664d82d08166679cf9f64a3504d6cda8ee9d"
+      "sha256": "d4427f2081a46e788acc8831292a664d82d08166679cf9f64a3504d6cda8ee9d",
+      "executavel": "GCompris.exe"
     },
     "linux": {
       "tipo": "pacote_oficial",

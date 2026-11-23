@@ -4,8 +4,11 @@
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
   "descricao": "Preencha a grelha para que cada linha, coluna e bloco contenha um de cada dígito.",
-  "autores": ["Simon Tatham", "outros contribuidores"],
-  "copyright": "Copyright 2004-2021 Simon Tatham (com contribuições de outros autores)",
+  "autores": [
+    "Simon Tatham",
+    "outros contribuidores"
+  ],
+  "copyright": "Copyright 2004-2026 Simon Tatham (com contribuições de outros autores)",
   "licenca": "MIT",
   "licenca_url": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/doc/licence.html",
   "site": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
@@ -25,5 +28,7 @@
       "nota": "Confirmar disponibilidade por distribuição antes de publicar."
     }
   },
-  "screenshots": ["screenshots/thumb.png"]
+  "screenshots": [
+    "screenshots/thumb.png"
+  ]
 }

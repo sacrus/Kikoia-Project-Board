@@ -17,10 +17,12 @@ from PySide6.QtGui import (
     QIcon,
     QImage,
     QKeySequence,
+    QLinearGradient,
     QPainter,
     QPainterPath,
     QPen,
     QPixmap,
+    QRadialGradient,
     QShortcut,
 )
 from PySide6.QtWidgets import (
@@ -34,6 +36,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QSlider,
     QVBoxLayout,
     QWidget,
 )
@@ -48,7 +51,7 @@ from quadro.desenho import (
     nome_sugerido,
     pasta_desenhos,
 )
-from quadro import acoes, camadas, carimbos, formas, icones, jxl, magia, menu_prefs, textos
+from quadro import acoes, camadas, carimbos, formas, icones, jxl, magia, menu_prefs, tema_partilhado, textos
 
 from quadro.icones_acoes import CORES_ACAO
 from quadro.correio import contas as contas_correio
@@ -90,30 +93,298 @@ TAMANHO_MIN_BOLHA = 34
 TAMANHO_MAX_BOLHA = 64
 
 
+class _BotaoEsfera(QPushButton):
+    """Botao circular com aspeto de esfera 3D translucida (vidro fosco/brilhante)."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._cor_esfera: QColor | None = None
+        self._sob_rato = False
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setStyleSheet("QPushButton { background: transparent; border: none; }")
+
+    def definir_cor_esfera(self, cor: str | None) -> None:
+        self._cor_esfera = QColor(cor) if cor else None
+        self.update()
+
+    def enterEvent(self, evento) -> None:  # noqa: N802
+        self._sob_rato = True
+        self.update()
+        super().enterEvent(evento)
+
+    def leaveEvent(self, evento) -> None:  # noqa: N802
+        self._sob_rato = False
+        self.update()
+        super().leaveEvent(evento)
+
+    def paintEvent(self, evento) -> None:  # noqa: N802
+        pintor = QPainter(self)
+        pintor.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pintor.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+
+        w, h = float(self.width()), float(self.height())
+        lado = min(w, h)
+        margem = 2.5
+        esfera = QRectF((w - lado) / 2 + margem, (h - lado) / 2 + margem, lado - 2 * margem, lado - 2 * margem)
+        cx, cy = esfera.center().x(), esfera.center().y()
+        raio = esfera.width() / 2.0
+
+        if not self.isEnabled():
+            pintor.setOpacity(0.42)
+
+        # Sombra suave por baixo da esfera para dar profundidade flutuante
+        sombra = QRadialGradient(cx, cy + raio * 0.14, raio * 1.05)
+        sombra.setColorAt(0.0, QColor(0, 0, 0, 95))
+        sombra.setColorAt(0.78, QColor(0, 0, 0, 45))
+        sombra.setColorAt(1.0, QColor(0, 0, 0, 0))
+        pintor.setPen(Qt.PenStyle.NoPen)
+        pintor.setBrush(sombra)
+        pintor.drawEllipse(QPointF(cx, cy + raio * 0.12), raio * 1.02, raio * 1.02)
+
+        # Corpo da esfera 3D translucida (gradiente radial deslocado para o foco de luz superior esquerdo)
+        foco = QPointF(cx - raio * 0.34, cy - raio * 0.36)
+        grad = QRadialGradient(QPointF(cx, cy), raio, foco)
+        ativo = self.isChecked()
+        premido = self.isDown()
+
+        if self._cor_esfera is not None:
+            base = QColor(self._cor_esfera)
+            clara = base.lighter(145)
+            escura = base.darker(155)
+            clara.setAlpha(235)
+            base.setAlpha(225)
+            escura.setAlpha(242)
+            grad.setColorAt(0.0, clara)
+            grad.setColorAt(0.55, base)
+            grad.setColorAt(1.0, escura)
+        elif ativo:
+            grad.setColorAt(0.0, QColor(125, 195, 255, 235))
+            grad.setColorAt(0.48, QColor(37, 99, 235, 230))
+            grad.setColorAt(1.0, QColor(23, 52, 138, 245))
+        elif premido:
+            grad.setColorAt(0.0, QColor(85, 100, 128, 225))
+            grad.setColorAt(0.55, QColor(38, 48, 66, 232))
+            grad.setColorAt(1.0, QColor(18, 24, 36, 245))
+        elif self._sob_rato:
+            grad.setColorAt(0.0, QColor(115, 132, 160, 212))
+            grad.setColorAt(0.52, QColor(52, 63, 84, 212))
+            grad.setColorAt(1.0, QColor(24, 31, 44, 232))
+        else:
+            grad.setColorAt(0.0, QColor(92, 106, 132, 192))
+            grad.setColorAt(0.52, QColor(38, 46, 62, 198))
+            grad.setColorAt(1.0, QColor(18, 23, 34, 222))
+
+        pintor.setBrush(grad)
+        pintor.drawEllipse(esfera)
+
+        # Reflexo especular de vidro no topo esquerdo
+        brilho_rect = QRectF(
+            esfera.left() + esfera.width() * 0.16,
+            esfera.top() + esfera.height() * 0.08,
+            esfera.width() * 0.68,
+            esfera.height() * 0.38,
+        )
+        brilho = QLinearGradient(brilho_rect.topLeft(), brilho_rect.bottomLeft())
+        brilho.setColorAt(0.0, QColor(255, 255, 255, 135 if ativo or self._sob_rato else 108))
+        brilho.setColorAt(0.65, QColor(255, 255, 255, 28))
+        brilho.setColorAt(1.0, QColor(255, 255, 255, 0))
+        pintor.setBrush(brilho)
+        pintor.drawEllipse(brilho_rect)
+
+        # Reflexo subtil de luz ambiente na borda inferior direita
+        reflexo_inf = QRectF(
+            esfera.left() + esfera.width() * 0.24,
+            esfera.top() + esfera.height() * 0.66,
+            esfera.width() * 0.52,
+            esfera.height() * 0.24,
+        )
+        pintor.setBrush(QColor(255, 255, 255, 30))
+        pintor.drawEllipse(reflexo_inf)
+
+        # Contorno de vidro translucido (mais luminoso quando ativo)
+        cor_borda = QColor(191, 219, 254, 225) if ativo else QColor(255, 255, 255, 110 if self._sob_rato else 76)
+        pintor.setPen(QPen(cor_borda, 1.6 if ativo else 1.1))
+        pintor.setBrush(Qt.BrushStyle.NoBrush)
+        pintor.drawEllipse(esfera.adjusted(0.6, 0.6, -0.6, -0.6))
+
+        # Icone centrado
+        if not self.icon().isNull():
+            tam_ic = self.iconSize()
+            iw = min(tam_ic.width(), int(esfera.width() * 0.62))
+            ih = min(tam_ic.height(), int(esfera.height() * 0.62))
+            pix = self.icon().pixmap(iw, ih)
+            # Se a bola da cor for muito clara (ex.: branco/amarelo), pinta o icone a escuro para contraste
+            if self._cor_esfera is not None:
+                lum = (0.299 * self._cor_esfera.red() + 0.587 * self._cor_esfera.green() + 0.114 * self._cor_esfera.blue()) / 255.0
+                if lum > 0.72:
+                    img = pix.toImage().convertToFormat(QImage.Format.Format_ARGB32)
+                    p_ic = QPainter(img)
+                    p_ic.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+                    p_ic.fillRect(img.rect(), QColor("#1E293B"))
+                    p_ic.end()
+                    pix = QPixmap.fromImage(img)
+            ix = round(cx - pix.width() / 2)
+            iy = round(cy - pix.height() / 2)
+            pintor.drawPixmap(ix, iy, pix)
+
+        # Badge numerico discreto (usado no correio quando ha mensagens por ler)
+        texto = self.text().strip()
+        if texto:
+            digitos = "".join(ch for ch in texto if ch.isdigit())
+            if digitos:
+                badge_r = max(9.0, raio * 0.34)
+                bx = esfera.right() - badge_r * 0.75
+                by = esfera.top() + badge_r * 0.75
+                pintor.setPen(QPen(QColor("#FFFFFF"), 1.4))
+                pintor.setBrush(QColor("#EF4444"))
+                pintor.drawEllipse(QPointF(bx, by), badge_r, badge_r)
+                fonte = QFont(self.font())
+                fonte.setPixelSize(max(10, int(badge_r * 1.15)))
+                fonte.setBold(True)
+                pintor.setFont(fonte)
+                pintor.setPen(QColor("#FFFFFF"))
+                pintor.drawText(
+                    QRectF(bx - badge_r, by - badge_r, badge_r * 2, badge_r * 2),
+                    Qt.AlignmentFlag.AlignCenter,
+                    digitos,
+                )
+
+        pintor.end()
+
+
 def _estilo_bolha(tamanho: int) -> str:
     raio = tamanho // 2
     letra = max(14, int(tamanho * 0.4))
     return (
-        "QPushButton { background: rgba(40, 40, 40, 210); color: white; border: none;"
-        f" border-radius: {raio}px; font-size: {letra}px; }}"
-        " QPushButton:checked { background: #2563eb; }"
-        " QPushButton:hover { background: rgba(80, 80, 80, 230); }"
-        " QPushButton:disabled { color: #777777; background: rgba(40, 40, 40, 120); }"
+        "QPushButton {"
+        " background: qradialgradient(cx:0.32, cy:0.28, radius:0.8, stop:0 rgba(92, 106, 132, 220),"
+        " stop:0.55 rgba(38, 46, 62, 232), stop:1 rgba(18, 23, 34, 245));"
+        f" color: white; border: 1.2px solid rgba(255, 255, 255, 95); border-radius: {raio}px;"
+        f" font-size: {letra}px; font-weight: bold; }}"
+        " QPushButton:checked { background: #2563eb; border-color: #bfdbfe; }"
+        " QPushButton:hover { background: qradialgradient(cx:0.32, cy:0.28, radius:0.8,"
+        " stop:0 rgba(120, 140, 175, 235), stop:0.55 rgba(52, 63, 84, 238), stop:1 rgba(24, 31, 44, 248));"
+        " border-color: rgba(255, 255, 255, 160); }"
+        " QPushButton:disabled { color: #888888; background: rgba(40, 46, 58, 120); }"
     )
 
 
 def _estilo_minimizar() -> str:
     return (
-        "QPushButton { background: rgba(40, 40, 40, 90); color: white; border: none; border-radius: 24px; }"
-        " QPushButton:hover, QPushButton:pressed { background: rgba(40, 40, 40, 230); }"
+        "QPushButton { background: rgba(30, 38, 54, 130); color: white;"
+        " border: 1px solid rgba(255, 255, 255, 70); border-radius: 24px; }"
+        " QPushButton:hover, QPushButton:pressed { background: rgba(37, 99, 235, 220);"
+        " border: 1px solid rgba(191, 219, 254, 210); }"
     )
 
 
 def _amostra(cor: str, tamanho: int = 36) -> QPushButton:
     botao = QPushButton()
     botao.setFixedSize(tamanho, tamanho)
-    botao.setStyleSheet(f"QPushButton {{ background: {cor}; border: 1px solid #888888; border-radius: 6px; }}")
+    botao.setCursor(Qt.CursorShape.PointingHandCursor)
+    botao.setStyleSheet(
+        f"QPushButton {{ background: {cor}; border: 2px solid rgba(255, 255, 255, 160); border-radius: {tamanho // 2}px; }}"
+        f" QPushButton:hover {{ border: 2px solid #60A5FA; }}"
+    )
     return botao
+
+
+class _AmostraTamanho(QWidget):
+    """Circulo de pre-visualizacao que acompanha ao vivo a posicao da barra de arraste."""
+
+    def __init__(self, diametro: float, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._diametro = diametro
+        self.setFixedSize(36, 36)
+
+    def definir_diametro(self, diametro: float) -> None:
+        self._diametro = diametro
+        self.update()
+
+    def paintEvent(self, evento) -> None:  # noqa: N802
+        pintor = QPainter(self)
+        pintor.setRenderHint(QPainter.RenderHint.Antialiasing)
+        raio = max(3.0, min(15.0, self._diametro / 2.0))
+        pintor.setPen(QPen(QColor(147, 197, 253, 180), 1.4))
+        pintor.setBrush(QBrush(QColor("#FFFFFF")))
+        pintor.drawEllipse(QPointF(18.0, 18.0), raio, raio)
+        pintor.end()
+
+
+class _BarraTamanho(QFrame):
+    """Barra de arraste continua do tamanho mais pequeno ao maior, sempre visivel sobre qualquer fundo."""
+
+    valor_alterado = Signal(float)
+    _PASSOS = 1000
+
+    def __init__(
+        self,
+        minimo: float,
+        maximo: float,
+        atual: float,
+        diametro_min: int = 8,
+        diametro_max: int = 30,
+        *,
+        com_fundo: bool = True,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._minimo = float(minimo)
+        self._maximo = float(maximo)
+        self._d_min = float(diametro_min)
+        self._d_max = float(diametro_max)
+        self.setObjectName("barraTamanho")
+        fundo_css = (
+            "QFrame#barraTamanho { background: rgba(24, 31, 46, 232);"
+            " border: 1px solid rgba(255, 255, 255, 70); border-radius: 18px; }"
+            if com_fundo
+            else "QFrame#barraTamanho { background: transparent; border: none; }"
+        )
+        self.setStyleSheet(
+            fundo_css
+            + " QSlider::groove:horizontal { height: 6px; background: rgba(255, 255, 255, 55); border-radius: 3px; }"
+            + " QSlider::sub-page:horizontal { background: #3B82F6; border-radius: 3px; }"
+            + " QSlider::handle:horizontal { background: #FFFFFF; border: 2px solid #2563EB;"
+            + " width: 18px; height: 18px; margin: -7px 0; border-radius: 10px; }"
+            + " QSlider::handle:horizontal:hover { background: #EFF6FF; border-color: #60A5FA; }"
+        )
+
+        ponto_min = _AmostraTamanho(6)
+        ponto_min.setFixedSize(16, 36)
+        self._deslizador = QSlider(Qt.Orientation.Horizontal)
+        self._deslizador.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._deslizador.setRange(0, self._PASSOS)
+        self._deslizador.setMinimumWidth(160)
+        self._deslizador.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._amostra = _AmostraTamanho(self._d_min)
+
+        linha = QHBoxLayout(self)
+        linha.setContentsMargins(10, 2, 10, 2)
+        linha.setSpacing(8)
+        linha.addWidget(ponto_min)
+        linha.addWidget(self._deslizador, 1)
+        linha.addWidget(self._amostra)
+
+        self._deslizador.valueChanged.connect(self._ao_mover)
+        self.definir_valor(atual)
+
+    def _fracao(self, valor: float) -> float:
+        if self._maximo <= self._minimo:
+            return 0.0
+        return max(0.0, min(1.0, (valor - self._minimo) / (self._maximo - self._minimo)))
+
+    def definir_valor(self, valor: float) -> None:
+        frac = self._fracao(valor)
+        self._deslizador.blockSignals(True)
+        self._deslizador.setValue(round(frac * self._PASSOS))
+        self._deslizador.blockSignals(False)
+        self._amostra.definir_diametro(self._d_min + frac * (self._d_max - self._d_min))
+
+    def _ao_mover(self, passo: int) -> None:
+        frac = passo / self._PASSOS
+        valor = self._minimo + frac * (self._maximo - self._minimo)
+        self._amostra.definir_diametro(self._d_min + frac * (self._d_max - self._d_min))
+        self.valor_alterado.emit(valor)
 
 
 class _Bolinha(QWidget):
@@ -564,7 +835,7 @@ class Menu(QWidget):
         self.ajustar(480)
 
     def _bolha(self, simbolo: str, dica: str, acao: Callable) -> QPushButton:
-        botao = QPushButton()
+        botao = _BotaoEsfera()
         if simbolo:
             botao.setIcon(QIcon(icones.desenhar(simbolo)))
         botao.setToolTip(dica)
@@ -591,7 +862,8 @@ class Menu(QWidget):
         for indice, botao in enumerate(self._botoes):
             botao.setFixedSize(tamanho, tamanho)
             botao.setIconSize(QSize(int(tamanho * 0.6), int(tamanho * 0.6)))
-            botao.setStyleSheet(_estilo_bolha(tamanho))
+            if not isinstance(botao, _BotaoEsfera):
+                botao.setStyleSheet(_estilo_bolha(tamanho))
             self._grelha.addWidget(botao, indice // colunas, indice % colunas)
         self.atualizar_estados()
         self.adjustSize()
@@ -648,10 +920,13 @@ class Menu(QWidget):
         self._refazer_botao.setEnabled(quadro.pode_refazer())
         self._apagar_botao.setEnabled(bool(self.tela.selecao))
         cor = self.tela.cor_ativa()
-        self._cor.setStyleSheet(
-            f"QPushButton {{ background: {cor}; color: {'#000000' if cor == '#ffffff' else '#ffffff'};"
-            f" border: 2px solid white; border-radius: {self._tamanho // 2}px; font-size: {max(14, int(self._tamanho * 0.4))}px; }}"
-        )
+        if isinstance(self._cor, _BotaoEsfera):
+            self._cor.definir_cor_esfera(cor)
+        else:
+            self._cor.setStyleSheet(
+                f"QPushButton {{ background: {cor}; color: {'#000000' if cor == '#ffffff' else '#ffffff'};"
+                f" border: 2px solid white; border-radius: {self._tamanho // 2}px; font-size: {max(14, int(self._tamanho * 0.4))}px; }}"
+            )
 
     def _fechar_paleta(self) -> None:
         if self._paleta is not None:
@@ -660,7 +935,12 @@ class Menu(QWidget):
     def _painel_popup(self, botao: QPushButton) -> QFrame:
         self._fechar_paleta()
         painel = QFrame(self, Qt.WindowType.Popup)
-        painel.setStyleSheet("QFrame { background: rgba(40, 40, 40, 230); border-radius: 14px; }")
+        painel.setStyleSheet(
+            "QFrame { background: rgba(24, 31, 46, 232); border: 1px solid rgba(255, 255, 255, 65); border-radius: 16px; }"
+            " QPushButton { background: rgba(255, 255, 255, 24); color: white; border: 1px solid rgba(255, 255, 255, 38); border-radius: 10px; }"
+            " QPushButton:hover { background: rgba(96, 165, 250, 95); border-color: rgba(191, 219, 254, 180); }"
+            " QPushButton:checked { background: #2563EB; border-color: #93C5FD; }"
+        )
         self._paleta = painel
         painel.move(botao.mapToGlobal(QPoint(botao.width() + 12, 0)))
         return painel
@@ -689,10 +969,9 @@ class Menu(QWidget):
 
     def _linha_tamanhos(self, painel, diametros, valores, atual, aplicar) -> QHBoxLayout:
         linha = QHBoxLayout()
-        for diametro, valor in zip(diametros, valores):
-            bolinha = _Bolinha(diametro, abs(valor - atual) < 1e-9)
-            bolinha.clicado.connect(lambda v=valor: self._escolher_tamanho(painel, aplicar, v))
-            linha.addWidget(bolinha)
+        barra = _BarraTamanho(valores[0], valores[-1], atual, diametros[0], diametros[-1], com_fundo=False)
+        barra.valor_alterado.connect(aplicar)
+        linha.addWidget(barra)
         return linha
 
     def _mostrar_formas(self) -> None:
@@ -749,13 +1028,14 @@ class Menu(QWidget):
     ) -> None:
         self._fechar_paleta()
         painel = QFrame(self, Qt.WindowType.Popup)
-        painel.setStyleSheet("QFrame { background: rgba(40, 40, 40, 230); border-radius: 22px; }")
+        painel.setStyleSheet(
+            "QFrame { background: rgba(24, 31, 46, 232); border: 1px solid rgba(255, 255, 255, 65); border-radius: 24px; }"
+        )
         linha = QHBoxLayout(painel)
-        linha.setContentsMargins(8, 4, 8, 4)
-        for diametro, valor in zip(diametros, valores):
-            bolinha = _Bolinha(diametro, abs(valor - atual) < 1e-9)
-            bolinha.clicado.connect(lambda v=valor: self._escolher_tamanho(painel, aplicar, v))
-            linha.addWidget(bolinha)
+        linha.setContentsMargins(6, 4, 6, 4)
+        barra = _BarraTamanho(valores[0], valores[-1], atual, diametros[0], diametros[-1], com_fundo=False)
+        barra.valor_alterado.connect(aplicar)
+        linha.addWidget(barra)
         self._paleta = painel
         painel.move(botao.mapToGlobal(QPoint(botao.width() + 12, 0)))
         painel.show()
@@ -767,6 +1047,11 @@ class Menu(QWidget):
     def _mostrar_paleta(self) -> None:
         self._fechar_paleta()
         paleta = QFrame(self, Qt.WindowType.Popup)
+        paleta.setStyleSheet(
+            "QFrame { background: rgba(24, 31, 46, 235); border: 1px solid rgba(255, 255, 255, 65); border-radius: 16px; }"
+            " QPushButton { background: rgba(255, 255, 255, 32); color: white; border: 1px solid rgba(255, 255, 255, 70); border-radius: 18px; font-weight: bold; }"
+            " QPushButton:hover { background: rgba(96, 165, 250, 120); border-color: #93C5FD; }"
+        )
         self._paleta = paleta
         grelha = QGridLayout(paleta)
         automatica = QPushButton("A")
@@ -822,13 +1107,10 @@ class CaixaTexto(QWidget):
         self.campo.setFrame(False)
         self.campo.returnPressed.connect(tela.confirmar_texto)
         self.campo.textChanged.connect(lambda _=None: self.posicionar())
-        self._bolinhas: list[tuple[_Bolinha, float]] = []
-        tamanhos = QHBoxLayout()
-        for diametro, valor in zip(TEXTO_DIAMETROS, TEXTO_TAMANHOS):
-            bolinha = _Bolinha(diametro, abs(valor - tamanho) < 1e-9)
-            bolinha.clicado.connect(lambda v=valor: self.definir_tamanho(v))
-            self._bolinhas.append((bolinha, valor))
-            tamanhos.addWidget(bolinha)
+        self._barra_tamanho = _BarraTamanho(
+            TEXTO_TAMANHOS[0], TEXTO_TAMANHOS[-1], tamanho, TEXTO_DIAMETROS[0], TEXTO_DIAMETROS[-1], com_fundo=True
+        )
+        self._barra_tamanho.valor_alterado.connect(self.definir_tamanho)
         comandos = QHBoxLayout()
         for simbolo, dx, dy in (("←", -self.PASSO, 0), ("↑", 0, -self.PASSO), ("↓", 0, self.PASSO), ("→", self.PASSO, 0)):
             comandos.addWidget(self._botao(simbolo, lambda _=False, a=dx, b=dy: self.mover(a, b)))
@@ -837,8 +1119,9 @@ class CaixaTexto(QWidget):
         comandos.addWidget(self._botao("✔", lambda _=False: tela.confirmar_texto()))
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(0, 0, 0, 0)
+        raiz.setSpacing(6)
         raiz.addWidget(self.campo)
-        raiz.addLayout(tamanhos)
+        raiz.addWidget(self._barra_tamanho)
         raiz.addLayout(comandos)
         self.atualizar_aparencia()
         self.show()
@@ -888,9 +1171,7 @@ class CaixaTexto(QWidget):
 
     def definir_tamanho(self, valor: float) -> None:
         self.tamanho = valor
-        for bolinha, valor_bolinha in self._bolinhas:
-            bolinha._selecionada = abs(valor_bolinha - valor) < 1e-9
-            bolinha.update()
+        self._barra_tamanho.definir_valor(valor)
         self.atualizar_aparencia()
 
     def texto(self) -> str:
@@ -998,6 +1279,21 @@ class CaixaColocacao(QWidget):
         self.atualizar_aparencia()
 
 
+def _estilo_definicoes_quadro(escuro: bool) -> str:
+    if escuro:
+        fundo, cartao, texto, borda, hover = "#16181D", "#1E222A", "#F1F5F9", "#333946", "#2B3242"
+    else:
+        fundo, cartao, texto, borda, hover = "#F1F5F9", "#FFFFFF", "#0F172A", "#CBD5E1", "#EFF6FF"
+    return (
+        f"QDialog {{ background-color: {fundo}; color: {texto}; }}"
+        f" QLabel {{ color: {texto}; font-weight: 600; font-size: 13px; }}"
+        f" QPushButton {{ background-color: {cartao}; color: {texto}; border: 1px solid {borda};"
+        f" border-radius: 9px; padding: 7px 14px; font-size: 13px; font-weight: 600; }}"
+        f" QPushButton:hover {{ background-color: {hover}; border-color: #3B82F6; }}"
+        " QPushButton:checked { background-color: #2563EB; color: #FFFFFF; border-color: #2563EB; }"
+    )
+
+
 class DialogoDefinicoes(QDialog):
     def __init__(self, janela: JanelaQuadro) -> None:
         super().__init__(janela)
@@ -1006,6 +1302,26 @@ class DialogoDefinicoes(QDialog):
         self.quadro = janela.quadro
         self.tela = janela.tela
         raiz = QVBoxLayout(self)
+        raiz.setContentsMargins(18, 16, 18, 16)
+        raiz.setSpacing(10)
+
+        # Tema da interface (Claro / Escuro), sincronizado com todo o Quadro e com o Teclado Kikoia.
+        raiz.addWidget(QLabel("Tema (Quadro e Teclado)"))
+        linha_tema = QHBoxLayout()
+        escuro_atual = tema_partilhado.e_escuro()
+        self._botao_claro = QPushButton("☀ Claro")
+        self._botao_claro.setCheckable(True)
+        self._botao_claro.setChecked(not escuro_atual)
+        self._botao_claro.clicked.connect(lambda _=False: self._definir_tema(False))
+        self._botao_escuro = QPushButton("☾ Escuro")
+        self._botao_escuro.setCheckable(True)
+        self._botao_escuro.setChecked(escuro_atual)
+        self._botao_escuro.clicked.connect(lambda _=False: self._definir_tema(True))
+        linha_tema.addWidget(self._botao_claro, 1)
+        linha_tema.addWidget(self._botao_escuro, 1)
+        raiz.addLayout(linha_tema)
+        self.setStyleSheet(_estilo_definicoes_quadro(escuro_atual))
+
         raiz.addWidget(QLabel("Cor de fundo"))
         linha = QHBoxLayout()
         for cor in CORES_FUNDO:
@@ -1076,6 +1392,12 @@ class DialogoDefinicoes(QDialog):
         fechar = QPushButton("Fechar")
         fechar.clicked.connect(self.accept)
         raiz.addWidget(fechar)
+
+    def _definir_tema(self, escuro: bool) -> None:
+        tema_partilhado.guardar_tema(escuro)
+        self._botao_claro.setChecked(not escuro)
+        self._botao_escuro.setChecked(escuro)
+        self.setStyleSheet(_estilo_definicoes_quadro(escuro))
 
     def _definir_fundo(self, cor: str) -> None:
         if cor == self.quadro.fundo:

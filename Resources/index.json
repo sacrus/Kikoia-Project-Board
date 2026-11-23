@@ -7,9 +7,204 @@
       "nome": "GCompris"
     },
     {
+      "id": "simon-blackbox",
+      "pasta": "Games/simon-blackbox",
+      "nome": "Black Box"
+    },
+    {
+      "id": "simon-bridges",
+      "pasta": "Games/simon-bridges",
+      "nome": "Bridges"
+    },
+    {
+      "id": "simon-cube",
+      "pasta": "Games/simon-cube",
+      "nome": "Cube"
+    },
+    {
+      "id": "simon-dominosa",
+      "pasta": "Games/simon-dominosa",
+      "nome": "Dominosa"
+    },
+    {
+      "id": "simon-fifteen",
+      "pasta": "Games/simon-fifteen",
+      "nome": "Fifteen"
+    },
+    {
+      "id": "simon-filling",
+      "pasta": "Games/simon-filling",
+      "nome": "Filling"
+    },
+    {
+      "id": "simon-flip",
+      "pasta": "Games/simon-flip",
+      "nome": "Flip"
+    },
+    {
+      "id": "simon-flood",
+      "pasta": "Games/simon-flood",
+      "nome": "Flood"
+    },
+    {
+      "id": "simon-galaxies",
+      "pasta": "Games/simon-galaxies",
+      "nome": "Galaxies"
+    },
+    {
+      "id": "simon-guess",
+      "pasta": "Games/simon-guess",
+      "nome": "Guess"
+    },
+    {
+      "id": "simon-inertia",
+      "pasta": "Games/simon-inertia",
+      "nome": "Inertia"
+    },
+    {
+      "id": "simon-keen",
+      "pasta": "Games/simon-keen",
+      "nome": "Keen"
+    },
+    {
+      "id": "simon-lightup",
+      "pasta": "Games/simon-lightup",
+      "nome": "Light Up"
+    },
+    {
+      "id": "simon-loopy",
+      "pasta": "Games/simon-loopy",
+      "nome": "Loopy"
+    },
+    {
+      "id": "simon-magnets",
+      "pasta": "Games/simon-magnets",
+      "nome": "Magnets"
+    },
+    {
+      "id": "simon-map",
+      "pasta": "Games/simon-map",
+      "nome": "Map"
+    },
+    {
+      "id": "simon-mines",
+      "pasta": "Games/simon-mines",
+      "nome": "Mines"
+    },
+    {
+      "id": "simon-mosaic",
+      "pasta": "Games/simon-mosaic",
+      "nome": "Mosaic"
+    },
+    {
+      "id": "simon-net",
+      "pasta": "Games/simon-net",
+      "nome": "Net"
+    },
+    {
+      "id": "simon-netslide",
+      "pasta": "Games/simon-netslide",
+      "nome": "Netslide"
+    },
+    {
+      "id": "simon-palisade",
+      "pasta": "Games/simon-palisade",
+      "nome": "Palisade"
+    },
+    {
+      "id": "simon-pattern",
+      "pasta": "Games/simon-pattern",
+      "nome": "Pattern"
+    },
+    {
+      "id": "simon-pearl",
+      "pasta": "Games/simon-pearl",
+      "nome": "Pearl"
+    },
+    {
+      "id": "simon-pegs",
+      "pasta": "Games/simon-pegs",
+      "nome": "Pegs"
+    },
+    {
+      "id": "simon-range",
+      "pasta": "Games/simon-range",
+      "nome": "Range"
+    },
+    {
+      "id": "simon-rect",
+      "pasta": "Games/simon-rect",
+      "nome": "Rectangles"
+    },
+    {
+      "id": "simon-samegame",
+      "pasta": "Games/simon-samegame",
+      "nome": "Same Game"
+    },
+    {
+      "id": "simon-signpost",
+      "pasta": "Games/simon-signpost",
+      "nome": "Signpost"
+    },
+    {
+      "id": "simon-singles",
+      "pasta": "Games/simon-singles",
+      "nome": "Singles"
+    },
+    {
+      "id": "simon-sixteen",
+      "pasta": "Games/simon-sixteen",
+      "nome": "Sixteen"
+    },
+    {
+      "id": "simon-slant",
+      "pasta": "Games/simon-slant",
+      "nome": "Slant"
+    },
+    {
       "id": "simon-solo",
       "pasta": "Games/simon-solo",
       "nome": "Solo"
+    },
+    {
+      "id": "simon-tents",
+      "pasta": "Games/simon-tents",
+      "nome": "Tents"
+    },
+    {
+      "id": "simon-towers",
+      "pasta": "Games/simon-towers",
+      "nome": "Towers"
+    },
+    {
+      "id": "simon-tracks",
+      "pasta": "Games/simon-tracks",
+      "nome": "Tracks"
+    },
+    {
+      "id": "simon-twiddle",
+      "pasta": "Games/simon-twiddle",
+      "nome": "Twiddle"
+    },
+    {
+      "id": "simon-undead",
+      "pasta": "Games/simon-undead",
+      "nome": "Undead"
+    },
+    {
+      "id": "simon-unequal",
+      "pasta": "Games/simon-unequal",
+      "nome": "Unequal"
+    },
+    {
+      "id": "simon-unruly",
+      "pasta": "Games/simon-unruly",
+      "nome": "Unruly"
+    },
+    {
+      "id": "simon-untangle",
+      "pasta": "Games/simon-untangle",
+      "nome": "Untangle"
     }
   ]
 }

@@ -1,4 +1,4 @@
-"""Catálogo de jogos: lista, detalhes com créditos e licença, e transferência a pedido."""
+"""Catálogo de jogos em cartões expansíveis: imagem, créditos, transferência e arranque direto."""
 
 from __future__ import annotations
 
@@ -8,19 +8,20 @@ from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QColor, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
-    QListWidget,
     QProgressBar,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
-from quadro import catalogo, menu_prefs
+from quadro import catalogo, icones, menu_prefs, tema_partilhado
 from quadro.catalogo import ErroCatalogo, Jogo, ResumoJogo
 from quadro.interruptor import interruptor
 
@@ -47,78 +48,472 @@ def _mensagem(erro: BaseException) -> str:
     return f"Erro inesperado: {erro}"
 
 
-def _ligacao(nome: str, url: str) -> str:
-    return f'<a href="{html.escape(url, quote=True)}">{html.escape(nome)}</a>'
+def _ligacao(nome: str, url: str, cor: str) -> str:
+    return f'<a href="{html.escape(url, quote=True)}" style="color:{cor}; text-decoration:none; font-weight:600;">{html.escape(nome)}</a>'
+
+
+def _miniatura_padrao(largura: int, altura: int, cor_fundo: str) -> QPixmap:
+    """Miniatura vetorial limpa quando o jogo ainda não tem screenshot."""
+    pix = QPixmap(largura, altura)
+    pix.fill(QColor(cor_fundo))
+    p = QPainter(pix)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    ic = icones.desenhar("jogos", min(largura, altura) - 24)
+    p.drawPixmap((largura - ic.width()) // 2, (altura - ic.height()) // 2, ic)
+    p.end()
+    return pix
+
+
+def _estilo_jogos(escuro: bool) -> str:
+    if escuro:
+        fundo = "#131720"
+        topo = "#1A202E"
+        cartao = "#1E2534"
+        cartao_hover = "#242D3F"
+        cartao_aberto = "#222B3D"
+        texto = "#F1F5F9"
+        texto_sec = "#CBD5E1"
+        texto_suave = "#94A3B8"
+        borda = "#2E374B"
+        borda_aberto = "#3B82F6"
+        btn_sec = "#262F42"
+        btn_sec_hover = "#313C54"
+    else:
+        fundo = "#EEF2F7"
+        topo = "#FFFFFF"
+        cartao = "#FFFFFF"
+        cartao_hover = "#F8FAFC"
+        cartao_aberto = "#FFFFFF"
+        texto = "#0F172A"
+        texto_sec = "#334155"
+        texto_suave = "#64748B"
+        borda = "#CBD5E1"
+        borda_aberto = "#2563EB"
+        btn_sec = "#F1F5F9"
+        btn_sec_hover = "#E2E8F0"
+
+    return f"""
+QDialog {{
+    background-color: {fundo};
+    color: {texto};
+}}
+QFrame#cabecalhoJogos {{
+    background-color: {topo};
+    border-bottom: 1px solid {borda};
+}}
+QLabel#tituloJogos {{
+    color: {texto};
+    font-size: 20px;
+    font-weight: 700;
+}}
+QLabel#subtituloJogos {{
+    color: {texto_suave};
+    font-size: 12px;
+}}
+QScrollArea {{
+    background-color: transparent;
+    border: none;
+}}
+QScrollArea > QWidget > QWidget {{
+    background-color: transparent;
+}}
+QFrame#cartaoJogo {{
+    background-color: {cartao};
+    border: 1px solid {borda};
+    border-radius: 14px;
+}}
+QFrame#cartaoJogo:hover {{
+    background-color: {cartao_hover};
+    border-color: {borda_aberto};
+}}
+QFrame#cartaoJogo[expandido="true"] {{
+    background-color: {cartao_aberto};
+    border: 1.5px solid {borda_aberto};
+}}
+QLabel#nomeJogo {{
+    color: {texto};
+    font-size: 16px;
+    font-weight: 700;
+}}
+QLabel#resumoJogo {{
+    color: {texto_sec};
+    font-size: 13px;
+}}
+QLabel#detalheJogo {{
+    color: {texto_sec};
+    font-size: 13px;
+}}
+QLabel#setaJogo {{
+    color: {texto_suave};
+    font-size: 18px;
+    font-weight: 700;
+}}
+QLabel#estadoJogos {{
+    color: {texto_suave};
+    font-size: 12px;
+    padding: 4px 2px;
+}}
+QPushButton {{
+    background-color: {btn_sec};
+    color: {texto};
+    border: 1px solid {borda};
+    border-radius: 9px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+}}
+QPushButton:hover {{
+    background-color: {btn_sec_hover};
+}}
+QPushButton:disabled {{
+    color: {texto_suave};
+}}
+QPushButton[papel="primario"] {{
+    background-color: #2563EB;
+    color: #FFFFFF;
+    border: 1px solid #2563EB;
+}}
+QPushButton[papel="primario"]:hover {{
+    background-color: #1D4ED8;
+}}
+QPushButton[papel="iniciar"] {{
+    background-color: #16A34A;
+    color: #FFFFFF;
+    border: 1px solid #16A34A;
+}}
+QPushButton[papel="iniciar"]:hover {{
+    background-color: #15803D;
+}}
+QProgressBar {{
+    background-color: {btn_sec};
+    border: 1px solid {borda};
+    border-radius: 6px;
+    text-align: center;
+    color: {texto};
+    height: 16px;
+}}
+QProgressBar::chunk {{
+    background-color: #2563EB;
+    border-radius: 5px;
+}}
+"""
+
+
+class _CartaoJogo(QFrame):
+    """Cartao expansivel de um jogo: clique alterna entre vista resumida e detalhes + botoes."""
+
+    clicado = Signal(object)
+
+    def __init__(self, resumo: ResumoJogo, ao_acao: Callable[[_CartaoJogo], None], ao_reinstalar: Callable[[_CartaoJogo], None], ao_atualizar: Callable[[_CartaoJogo], None]) -> None:
+        super().__init__()
+        self.setObjectName("cartaoJogo")
+        self.setProperty("expandido", False)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        self.resumo = resumo
+        self.jogo: Jogo | None = None
+        self.miniatura_path: Path | None = None
+        self.instalado: Path | None = None
+        self.executavel: Path | None = None
+        self._expandido = False
+
+        # --- cabecalho clicavel do cartao (sempre visivel) ---
+        self._thumb = QLabel()
+        self._thumb.setFixedSize(116, 74)
+        self._thumb.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._thumb.setStyleSheet("border-radius: 10px; background: #1E3A8A;")
+        self._thumb.setPixmap(_miniatura_padrao(116, 74, "#2563EB"))
+
+        self._nome = QLabel(resumo.nome)
+        self._nome.setObjectName("nomeJogo")
+
+        self._badge = QLabel("A carregar…")
+        self._badge.setStyleSheet(
+            "background: rgba(148, 163, 184, 50); color: #64748B; border-radius: 9px; padding: 2px 9px; font-size: 11px; font-weight: 700;"
+        )
+
+        self._resumo_txt = QLabel("Clique para ver detalhes e iniciar")
+        self._resumo_txt.setObjectName("resumoJogo")
+        self._resumo_txt.setWordWrap(True)
+
+        self._seta = QLabel("▸")
+        self._seta.setObjectName("setaJogo")
+        self._seta.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._seta.setFixedWidth(24)
+
+        linha_titulo = QHBoxLayout()
+        linha_titulo.setSpacing(8)
+        linha_titulo.addWidget(self._nome)
+        linha_titulo.addWidget(self._badge)
+        linha_titulo.addStretch(1)
+
+        info_topo = QVBoxLayout()
+        info_topo.setSpacing(4)
+        info_topo.addLayout(linha_titulo)
+        info_topo.addWidget(self._resumo_txt)
+
+        topo = QHBoxLayout()
+        topo.setSpacing(14)
+        topo.addWidget(self._thumb)
+        topo.addLayout(info_topo, 1)
+        topo.addWidget(self._seta)
+
+        # --- area expansivel (detalhes, imagem grande, progresso e botoes) ---
+        self._corpo = QWidget()
+        self._corpo.setVisible(False)
+        corpo_layout = QVBoxLayout(self._corpo)
+        corpo_layout.setContentsMargins(0, 10, 0, 0)
+        corpo_layout.setSpacing(10)
+
+        detalhes_linha = QHBoxLayout()
+        detalhes_linha.setSpacing(14)
+
+        self._imagem_grande = QLabel()
+        self._imagem_grande.setFixedSize(240, 150)
+        self._imagem_grande.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._imagem_grande.setStyleSheet("border-radius: 10px; background: rgba(148, 163, 184, 30);")
+        self._imagem_grande.setVisible(False)
+
+        self.texto_detalhe = QLabel()
+        self.texto_detalhe.setObjectName("detalheJogo")
+        self.texto_detalhe.setWordWrap(True)
+        self.texto_detalhe.setTextFormat(Qt.TextFormat.RichText)
+        self.texto_detalhe.setOpenExternalLinks(True)
+        self.texto_detalhe.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+
+        detalhes_linha.addWidget(self._imagem_grande)
+        detalhes_linha.addWidget(self.texto_detalhe, 1)
+        corpo_layout.addLayout(detalhes_linha)
+
+        self.barra = QProgressBar()
+        self.barra.setVisible(False)
+        corpo_layout.addWidget(self.barra)
+
+        botoes = QHBoxLayout()
+        botoes.setSpacing(8)
+        self.botao_principal = QPushButton("A carregar…")
+        self.botao_principal.setEnabled(False)
+        self.botao_principal.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.botao_principal.clicked.connect(lambda _=False: ao_acao(self))
+
+        self.botao_reinstalar = QPushButton("Executar instalador")
+        self.botao_reinstalar.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.botao_reinstalar.setVisible(False)
+        self.botao_reinstalar.clicked.connect(lambda _=False: ao_reinstalar(self))
+
+        self.botao_atualizar = QPushButton("Já instalei — atualizar")
+        self.botao_atualizar.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.botao_atualizar.setVisible(False)
+        self.botao_atualizar.clicked.connect(lambda _=False: ao_atualizar(self))
+
+        botoes.addWidget(self.botao_principal)
+        botoes.addWidget(self.botao_reinstalar)
+        botoes.addWidget(self.botao_atualizar)
+        botoes.addStretch(1)
+        corpo_layout.addLayout(botoes)
+
+        raiz = QVBoxLayout(self)
+        raiz.setContentsMargins(14, 12, 14, 12)
+        raiz.setSpacing(0)
+        raiz.addLayout(topo)
+        raiz.addWidget(self._corpo)
+
+    def mousePressEvent(self, evento) -> None:  # noqa: N802
+        if evento.button() == Qt.MouseButton.LeftButton:
+            self.clicado.emit(self)
+        super().mousePressEvent(evento)
+
+    def definir_expandido(self, expandido: bool) -> None:
+        self._expandido = expandido
+        self._corpo.setVisible(expandido)
+        self._seta.setText("▾" if expandido else "▸")
+        self.setProperty("expandido", expandido)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
+
+    def preencher_dados(self, jogo: Jogo, miniatura: Path | None, instalado: Path | None, executavel: Path | None, escuro: bool) -> None:
+        self.jogo = jogo
+        self.miniatura_path = miniatura
+        self.instalado = instalado
+        self.executavel = executavel
+        self._nome.setText(jogo.nome)
+        self._resumo_txt.setText(jogo.descricao)
+
+        if miniatura is not None:
+            pix = QPixmap(str(miniatura))
+            if not pix.isNull():
+                self._thumb.setPixmap(pix.scaled(116, 74, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation))
+                self._imagem_grande.setPixmap(pix.scaled(240, 150, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                self._imagem_grande.setVisible(True)
+        else:
+            cor = "#E11D48" if jogo.id == "gcompris" else "#2563EB"
+            self._thumb.setPixmap(_miniatura_padrao(116, 74, cor))
+            self._imagem_grande.setVisible(False)
+
+        self.atualizar_texto_e_estado(escuro)
+
+    def atualizar_texto_e_estado(self, escuro: bool) -> None:
+        if self.jogo is None:
+            return
+        jogo = self.jogo
+        cor_link = "#60A5FA" if escuro else "#2563EB"
+        escapar = html.escape
+        linhas = [
+            f"<p style='margin:0 0 8px 0;'>{escapar(jogo.descricao)}</p>",
+            f"<p style='margin:0;'><b>Autores:</b> {escapar(', '.join(jogo.autores))}<br>",
+            f"<b>Copyright:</b> {escapar(jogo.copyright)}<br>",
+            f"<b>Licença:</b> {_ligacao(jogo.licenca, jogo.licenca_url, cor_link)} · "
+            f"<b>Site:</b> {_ligacao(jogo.site, jogo.site, cor_link)} · "
+            f"<b>Fonte:</b> {_ligacao('download oficial', jogo.fonte_oficial, cor_link)}</p>",
+        ]
+        if jogo.instalacao_windows is None:
+            linhas.append("<p><i>Sem instalação para Windows nesta versão.</i></p>")
+        self.texto_detalhe.setText("".join(linhas))
+
+        # Estado do badge e dos botoes (suporta arranque direto de jogos instalados como o GCompris!)
+        eh_instalador = jogo.instalacao_windows is not None and jogo.instalacao_windows.tipo == "instalador"
+        if self.executavel is not None or (self.instalado is not None and not eh_instalador):
+            self._badge.setText("Instalado")
+            self._badge.setStyleSheet(
+                "background: rgba(22, 163, 74, 42); color: #16A34A; border-radius: 9px; padding: 2px 9px; font-size: 11px; font-weight: 700;"
+            )
+            self.botao_principal.setText("Iniciar jogo")
+            self.botao_principal.setProperty("papel", "iniciar")
+            self.botao_principal.setEnabled(True)
+            self.botao_reinstalar.setVisible(eh_instalador and self.instalado is not None)
+            self.botao_atualizar.setVisible(False)
+        elif self.instalado is not None and eh_instalador:
+            self._badge.setText("Instalador pronto")
+            self._badge.setStyleSheet(
+                "background: rgba(245, 158, 11, 45); color: #D97706; border-radius: 9px; padding: 2px 9px; font-size: 11px; font-weight: 700;"
+            )
+            self.botao_principal.setText("Executar instalador")
+            self.botao_principal.setProperty("papel", "primario")
+            self.botao_principal.setEnabled(True)
+            self.botao_reinstalar.setVisible(False)
+            self.botao_atualizar.setVisible(True)
+        elif jogo.instalacao_windows is not None:
+            self._badge.setText("Disponível")
+            self._badge.setStyleSheet(
+                "background: rgba(37, 99, 235, 36); color: #2563EB; border-radius: 9px; padding: 2px 9px; font-size: 11px; font-weight: 700;"
+            )
+            self.botao_principal.setText("Descarregar e instalar" if eh_instalador else "Descarregar e iniciar")
+            self.botao_principal.setProperty("papel", "primario")
+            self.botao_principal.setEnabled(True)
+            self.botao_reinstalar.setVisible(False)
+            self.botao_atualizar.setVisible(eh_instalador)
+        else:
+            self._badge.setText("Indisponível")
+            self.botao_principal.setText("Indisponível")
+            self.botao_principal.setProperty("papel", "")
+            self.botao_principal.setEnabled(False)
+            self.botao_reinstalar.setVisible(False)
+            self.botao_atualizar.setVisible(False)
+
+        self.botao_principal.style().unpolish(self.botao_principal)
+        self.botao_principal.style().polish(self.botao_principal)
+
+
+class _AdaptadorLista:
+    """Mantem compatibilidade com testes que consultam dialogo._lista.count()."""
+
+    def __init__(self, cartoes: list[_CartaoJogo]) -> None:
+        self._cartoes = cartoes
+
+    def count(self) -> int:
+        return len(self._cartoes)
 
 
 class DialogoJogos(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Jogos")
-        self.resize(960, 600)
+        self.resize(860, 620)
         self._base = catalogo.base_recursos()
         self._resumos: list[ResumoJogo] = []
+        self._cartoes: list[_CartaoJogo] = []
+        self._lista = _AdaptadorLista(self._cartoes)
+        self._cartao_ativo: _CartaoJogo | None = None
         self._jogo: Jogo | None = None
         self._instalado: Path | None = None
-        self._ocupado = False
-
-        self._lista = QListWidget()
-        self._lista.setMinimumWidth(220)
-        self._lista.currentRowChanged.connect(self._selecionado)
-
-        self._imagem = QLabel("Sem imagem")
-        self._imagem.setFixedSize(360, 220)
-        self._imagem.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._imagem.setStyleSheet("border: 1px solid #888888;")
-
         self._texto = QLabel()
-        self._texto.setWordWrap(True)
-        self._texto.setTextFormat(Qt.TextFormat.RichText)
-        self._texto.setOpenExternalLinks(True)
-        self._texto.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self._ocupado = False
+        self._escuro = tema_partilhado.e_escuro()
 
-        self._estado = QLabel("A carregar o catálogo…")
-        self._estado.setWordWrap(True)
-        self._barra = QProgressBar()
-        self._barra.setVisible(False)
-        self._botao = QPushButton()
-        self._botao.setEnabled(False)
-        self._botao.clicked.connect(lambda _=False: self._acao())
+        # --- cabecalho moderno ---
+        cabecalho_frame = QFrame()
+        cabecalho_frame.setObjectName("cabecalhoJogos")
+        cab_layout = QHBoxLayout(cabecalho_frame)
+        cab_layout.setContentsMargins(18, 12, 18, 12)
+        cab_layout.setSpacing(12)
+
+        titulos = QVBoxLayout()
+        titulos.setSpacing(2)
+        lbl_titulo = QLabel("Jogos")
+        lbl_titulo.setObjectName("tituloJogos")
+        lbl_sub = QLabel("Clique num cartão para expandir os detalhes e iniciar")
+        lbl_sub.setObjectName("subtituloJogos")
+        titulos.addWidget(lbl_titulo)
+        titulos.addWidget(lbl_sub)
+
+        self._menu = interruptor("No menu", menu_prefs.ler()["jogos"])
+        self._menu.setToolTip("Mostrar ou ocultar o botão de Jogos no menu do Quadro")
+        self._menu.toggled.connect(self._alterar_menu)
+
         fechar = QPushButton("Fechar")
+        fechar.setCursor(Qt.CursorShape.PointingHandCursor)
         fechar.clicked.connect(self.accept)
 
-        direita = QVBoxLayout()
-        direita.addWidget(self._imagem)
-        direita.addWidget(self._texto, 1)
-        direita.addWidget(self._estado)
-        direita.addWidget(self._barra)
-        botoes = QHBoxLayout()
-        botoes.addWidget(self._botao)
-        botoes.addStretch(1)
-        botoes.addWidget(fechar)
-        direita.addLayout(botoes)
+        cab_layout.addLayout(titulos, 1)
+        cab_layout.addWidget(self._menu)
+        cab_layout.addWidget(fechar)
 
-        conteudo = QHBoxLayout()
-        conteudo.addWidget(self._lista)
-        conteudo.addLayout(direita, 1)
-        self._menu = interruptor("Adicionar ao Menu", menu_prefs.ler()["jogos"])
-        self._menu.toggled.connect(self._alterar_menu)
-        topo = QHBoxLayout()
-        topo.addStretch(1)
-        topo.addWidget(self._menu)
+        # --- area de cartoes com scroll ---
+        self._conteudo_cartoes = QWidget()
+        self._layout_cartoes = QVBoxLayout(self._conteudo_cartoes)
+        self._layout_cartoes.setContentsMargins(16, 14, 16, 14)
+        self._layout_cartoes.setSpacing(10)
+        self._layout_cartoes.addStretch(1)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(self._conteudo_cartoes)
+
+        self._estado = QLabel("A carregar o catálogo…")
+        self._estado.setObjectName("estadoJogos")
+        self._estado.setWordWrap(True)
+
+        rodape = QHBoxLayout()
+        rodape.setContentsMargins(18, 4, 18, 10)
+        rodape.addWidget(self._estado, 1)
+
         raiz = QVBoxLayout(self)
-        raiz.addLayout(topo)
-        raiz.addLayout(conteudo, 1)
+        raiz.setContentsMargins(0, 0, 0, 0)
+        raiz.setSpacing(0)
+        raiz.addWidget(cabecalho_frame)
+        raiz.addWidget(scroll, 1)
+        raiz.addLayout(rodape)
 
+        self._aplicar_tema()
         self._correr(lambda _: catalogo.carregar_indice(self._base), self._indice_pronto)
 
-    # --- trabalho em segundo plano -------------------------------------------------
+    # --- tema e preferencias -------------------------------------------------------
+
+    def _aplicar_tema(self) -> None:
+        self.setStyleSheet(_estilo_jogos(self._escuro))
+        if hasattr(self._menu, "definir_cor_texto"):
+            self._menu.definir_cor_texto("#E2E8F0" if self._escuro else "#1E293B")
+        for cartao in self._cartoes:
+            cartao.atualizar_texto_e_estado(self._escuro)
 
     def _alterar_menu(self, visivel: bool) -> None:
         menu_prefs.guardar({"jogos": visivel})
         janela = self.parent()
         if hasattr(janela, "menu"):
             janela.menu._jogos.setVisible(visivel)
+
+    # --- trabalho em segundo plano -------------------------------------------------
 
     def _correr(
         self,
@@ -134,13 +529,13 @@ class DialogoJogos(QDialog):
         def executar() -> None:
             try:
                 resultado: tuple = ("ok", trabalho(sinal.progresso.emit))
-            except Exception as erro:  # o erro é mostrado ao utilizador
+            except Exception as erro:
                 resultado = ("erro", _mensagem(erro))
             sinal.terminou.emit(resultado)
 
         threading.Thread(target=executar, daemon=True, name="quadro-jogos").start()
 
-    # --- lista e detalhes ----------------------------------------------------------
+    # --- cartoes e detalhes --------------------------------------------------------
 
     def _indice_pronto(self, resultado: object) -> None:
         estado, valor = resultado  # type: ignore[misc]
@@ -148,122 +543,122 @@ class DialogoJogos(QDialog):
             self._estado.setText(str(valor))
             return
         self._resumos = list(valor)  # type: ignore[arg-type]
-        self._lista.clear()
+        self._cartoes.clear()
+        while self._layout_cartoes.count() > 1:
+            item = self._layout_cartoes.takeAt(0)
+            if item.widget() is not None:
+                item.widget().deleteLater()
+
         for resumo in self._resumos:
-            self._lista.addItem(resumo.nome)
-        self._estado.setText("Escolha um jogo para ver os detalhes." if self._resumos else "Não há jogos.")
-        if self._resumos:
-            self._lista.setCurrentRow(0)
+            cartao = _CartaoJogo(resumo, self._acao_cartao, self._reinstalar_cartao, self._reverificar_cartao)
+            cartao.clicado.connect(self._alternar_cartao)
+            self._cartoes.append(cartao)
+            self._layout_cartoes.insertWidget(self._layout_cartoes.count() - 1, cartao)
+            self._correr(lambda _, r=resumo: self._carregar_dados_cartao(r), lambda res, c=cartao: self._dados_prontos(c, res))
 
-    def _selecionado(self, linha: int) -> None:
-        if linha < 0 or linha >= len(self._resumos) or self._ocupado:
-            return
-        resumo = self._resumos[linha]
-        self._jogo = None
-        self._botao.setEnabled(False)
-        self._texto.clear()
-        self._imagem.setText("Sem imagem")
-        self._imagem.setPixmap(QPixmap())
-        self._estado.setText("A carregar os detalhes…")
-        self._correr(lambda _: self._detalhes(resumo), self._detalhes_prontos)
+        self._estado.setText("" if self._resumos else "Não há jogos disponíveis.")
+        if self._cartoes:
+            self._alternar_cartao(self._cartoes[0])
 
-    def _detalhes(self, resumo: ResumoJogo) -> tuple:
+    def _carregar_dados_cartao(self, resumo: ResumoJogo) -> tuple:
         jogo = catalogo.carregar_jogo(resumo, self._base)
         miniatura = catalogo.miniatura(jogo, catalogo.pasta_cache(), self._base)
-        return jogo, miniatura, catalogo.instalado(jogo)
+        instalado = catalogo.instalado(jogo)
+        executavel = catalogo.executavel_instalado(jogo)
+        return jogo, miniatura, instalado, executavel
 
-    def _detalhes_prontos(self, resultado: object) -> None:
+    def _dados_prontos(self, cartao: _CartaoJogo, resultado: object) -> None:
         estado, valor = resultado  # type: ignore[misc]
         if estado == "erro":
             self._estado.setText(str(valor))
             return
-        jogo, miniatura, instalado = valor  # type: ignore[misc]
-        self._jogo = jogo
-        self._instalado = instalado
-        if miniatura is not None:
-            pixmap = QPixmap(str(miniatura))
-            if not pixmap.isNull():
-                self._imagem.setPixmap(pixmap.scaled(360, 220, Qt.AspectRatioMode.KeepAspectRatio))
-        self._texto.setText(self._texto_detalhe(jogo))
-        self._estado.setText("")
-        self._atualizar_botao()
+        jogo, miniatura, instalado, executavel = valor  # type: ignore[misc]
+        cartao.preencher_dados(jogo, miniatura, instalado, executavel, self._escuro)
+        if cartao is self._cartao_ativo:
+            self._jogo = jogo
+            self._instalado = executavel or instalado
+            self._texto = cartao.texto_detalhe
 
-    def _texto_detalhe(self, jogo: Jogo) -> str:
-        escapar = html.escape
-        linhas = [
-            f"<h2>{escapar(jogo.nome)}</h2>",
-            f"<p>{escapar(jogo.descricao)}</p>",
-            f"<p><b>Autores:</b> {escapar(', '.join(jogo.autores))}<br>",
-            f"<b>Copyright:</b> {escapar(jogo.copyright)}<br>",
-            f"<b>Licença:</b> {_ligacao(jogo.licenca, jogo.licenca_url)}<br>",
-            f"<b>Site:</b> {_ligacao(jogo.site, jogo.site)}<br>",
-            f"<b>Fonte oficial:</b> {_ligacao('download', jogo.fonte_oficial)}</p>",
-        ]
-        if jogo.instalacao_windows is None:
-            linhas.append("<p><i>Sem instalação para Windows nesta versão.</i></p>")
-        return "".join(linhas)
-
-    def _atualizar_botao(self) -> None:
-        jogo = self._jogo
-        if jogo is None:
-            self._botao.setEnabled(False)
+    def _alternar_cartao(self, cartao: _CartaoJogo) -> None:
+        if self._ocupado:
             return
-        if self._instalado is not None and jogo.instalacao_windows is not None and jogo.instalacao_windows.tipo == "instalador":
-            self._botao.setText("Executar instalador outra vez")
-        elif self._instalado is not None:
-            self._botao.setText("Abrir")
-        elif jogo.instalacao_windows is not None:
-            if jogo.instalacao_windows.tipo == "instalador":
-                self._botao.setText("Descarregar e iniciar instalador")
-            else:
-                self._botao.setText("Descarregar e abrir")
+        if self._cartao_ativo is cartao and cartao._expandido:
+            cartao.definir_expandido(False)
+            self._cartao_ativo = None
+            return
+        for outro in self._cartoes:
+            outro.definir_expandido(outro is cartao)
+        self._cartao_ativo = cartao
+        if cartao.jogo is not None:
+            self._jogo = cartao.jogo
+            self._instalado = cartao.executavel or cartao.instalado
+            self._texto = cartao.texto_detalhe
+
+    # --- acoes ---------------------------------------------------------------------
+
+    def _reverificar_cartao(self, cartao: _CartaoJogo) -> None:
+        if cartao.jogo is None:
+            return
+        cartao.executavel = catalogo.executavel_instalado(cartao.jogo)
+        cartao.instalado = catalogo.instalado(cartao.jogo)
+        cartao.atualizar_texto_e_estado(self._escuro)
+        if cartao.executavel is not None:
+            self._estado.setText(f"{cartao.jogo.nome} detetado e pronto a iniciar!")
         else:
-            self._botao.setText("Indisponível")
-        self._botao.setEnabled(self._instalado is not None or jogo.instalacao_windows is not None)
+            self._estado.setText(f"{cartao.jogo.nome} ainda não foi detetado no sistema.")
 
-    # --- ações ---------------------------------------------------------------------
+    def _reinstalar_cartao(self, cartao: _CartaoJogo) -> None:
+        if cartao.jogo is None or cartao.instalado is None or self._ocupado:
+            return
+        self._abrir(cartao.instalado, cartao.jogo, "instalador")
 
-    def _acao(self) -> None:
-        jogo = self._jogo
+    def _acao_cartao(self, cartao: _CartaoJogo) -> None:
+        jogo = cartao.jogo
         if jogo is None or self._ocupado:
             return
-        if self._instalado is not None:
-            self._abrir(self._instalado, jogo)
+        # Se ja existe executavel instalado (ex.: GCompris.exe), arranca diretamente o jogo!
+        if cartao.executavel is not None:
+            self._abrir(cartao.executavel, jogo, "executavel")
+            return
+        if cartao.instalado is not None:
+            tipo = jogo.instalacao_windows.tipo if jogo.instalacao_windows else "executavel"
+            self._abrir(cartao.instalado, jogo, tipo)
             return
         if jogo.instalacao_windows is None:
             return
         self._ocupado = True
-        self._botao.setEnabled(False)
-        self._barra.setVisible(True)
-        self._barra.setRange(0, 100)
-        self._barra.setValue(0)
-        self._estado.setText("A descarregar da fonte oficial…")
+        cartao.botao_principal.setEnabled(False)
+        cartao.barra.setVisible(True)
+        cartao.barra.setRange(0, 100)
+        cartao.barra.setValue(0)
+        self._estado.setText(f"A descarregar {jogo.nome} da fonte oficial…")
         self._correr(
             lambda progresso: catalogo.transferir(jogo, progresso=progresso),
-            lambda resultado: self._transferido(jogo, resultado),
-            self._progresso,
+            lambda resultado: self._transferido(cartao, jogo, resultado),
+            lambda rec, tot: self._progresso(cartao, rec, tot),
         )
 
-    def _progresso(self, recebido: int, total: int) -> None:
+    def _progresso(self, cartao: _CartaoJogo, recebido: int, total: int) -> None:
         percentagem = int(recebido * 100 / total) if total else 0
-        self._barra.setValue(percentagem)
+        cartao.barra.setValue(percentagem)
         self._estado.setText(f"A descarregar… {percentagem}%")
 
-    def _transferido(self, jogo: Jogo, resultado: object) -> None:
+    def _transferido(self, cartao: _CartaoJogo, jogo: Jogo, resultado: object) -> None:
         self._ocupado = False
-        self._barra.setVisible(False)
+        cartao.barra.setVisible(False)
         estado, valor = resultado  # type: ignore[misc]
         if estado == "erro":
             self._estado.setText(str(valor))
-            self._atualizar_botao()
+            cartao.atualizar_texto_e_estado(self._escuro)
             return
-        self._instalado = valor  # type: ignore[assignment]
+        cartao.instalado = valor  # type: ignore[assignment]
+        cartao.executavel = catalogo.executavel_instalado(jogo)
+        cartao.atualizar_texto_e_estado(self._escuro)
         self._estado.setText("Verificado (SHA-256 confere com o registo oficial).")
-        self._atualizar_botao()
-        self._abrir(valor, jogo)  # type: ignore[arg-type]
-
-    def _abrir(self, caminho: Path, jogo: Jogo) -> None:
         tipo = jogo.instalacao_windows.tipo if jogo.instalacao_windows else "executavel"
+        self._abrir(cartao.executavel or valor, jogo, "executavel" if cartao.executavel else tipo)  # type: ignore[arg-type]
+
+    def _abrir(self, caminho: Path, jogo: Jogo, tipo: str) -> None:
         try:
             catalogo.abrir(caminho, tipo)
         except ErroCatalogo as erro:
@@ -272,4 +667,7 @@ class DialogoJogos(QDialog):
         except OSError as erro:
             self._estado.setText(f"Não foi possível abrir o jogo: {erro}")
             return
-        self._estado.setText(f"Aberto: {jogo.nome}.")
+        if tipo == "instalador":
+            self._estado.setText(f"Instalador de {jogo.nome} aberto. Depois de instalar, clique em «Já instalei — atualizar».")
+        else:
+            self._estado.setText(f"Aberto: {jogo.nome}.")
