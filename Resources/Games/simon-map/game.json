@@ -3,6 +3,7 @@
   "nome": "Map",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Pinte todas as regiões do mapa usando apenas quatro cores, sem regiões vizinhas da mesma cor.",
   "autores": [
     "Simon Tatham",

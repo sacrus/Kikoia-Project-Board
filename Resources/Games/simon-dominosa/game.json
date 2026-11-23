@@ -3,6 +3,7 @@
   "nome": "Dominosa",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Coloque um conjunto completo de peças de dominó sobre a grelha de números sem repetir pares.",
   "autores": [
     "Simon Tatham",

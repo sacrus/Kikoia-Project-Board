@@ -33,7 +33,8 @@ TAMANHO_BLOCO = 64 * 1024
 _ID = re.compile(r"[a-z0-9][a-z0-9-]{0,39}")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _NOME_FICHEIRO = re.compile(r"[A-Za-z0-9._-]{1,120}")
-TIPOS_INSTALACAO = ("executavel", "instalador")
+TIPOS_INSTALACAO = ("executavel", "instalador", "integrado")
+_MODULO = re.compile(r"[a-z0-9_]{1,40}")
 DISPOSITIVOS_CONTROLO = ("rato", "teclado", "caneta", "toque")
 NIVEIS_CONTROLO = ("necessario", "aconselhado", "suportado")
 _SINONIMOS_NIVEL = {"obrigatorio": "necessario"}
@@ -50,6 +51,7 @@ class Instalacao:
     ficheiro: str
     sha256: str
     executavel: str | None = None
+    modulo: str | None = None
 
 
 @dataclass
@@ -67,6 +69,8 @@ class Jogo:
     screenshots: list[str] = field(default_factory=list)
     instalacao_windows: Instalacao | None = None
     controlos: dict[str, str] = field(default_factory=dict)
+    categoria: str = ""
+    publico: str = ""
 
 
 @dataclass(frozen=True)
@@ -192,6 +196,8 @@ def carregar_jogo(resumo: ResumoJogo, base: str | None = None, baixar: Callable 
         screenshots=[_caminho_seguro(s) for s in screenshots if isinstance(s, str)],
         instalacao_windows=_instalacao(dados.get("instalacao", {}).get("windows")),
         controlos=_controlos(dados.get("controlos")),
+        categoria=str(dados.get("categoria") or "").strip(),
+        publico=str(dados.get("publico") or "").strip(),
     )
     return jogo
 
@@ -219,9 +225,16 @@ def _instalacao(dados: object) -> Instalacao | None:
     if not isinstance(dados, dict):
         raise ErroCatalogo("catalogo.metadados_invalidos")
     tipo = _texto(dados, "tipo")
+    if tipo not in TIPOS_INSTALACAO:
+        raise ErroCatalogo("catalogo.metadados_invalidos")
+    if tipo == "integrado":
+        modulo = _texto(dados, "modulo")
+        if not _MODULO.fullmatch(modulo):
+            raise ErroCatalogo("catalogo.metadados_invalidos")
+        return Instalacao(tipo="integrado", url="", ficheiro="", sha256="", modulo=modulo)
     ficheiro = _texto(dados, "ficheiro")
     sha256 = _texto(dados, "sha256")
-    if tipo not in TIPOS_INSTALACAO or not _NOME_FICHEIRO.fullmatch(ficheiro):
+    if not _NOME_FICHEIRO.fullmatch(ficheiro):
         raise ErroCatalogo("catalogo.metadados_invalidos")
     if not _SHA256.fullmatch(sha256):
         raise ErroCatalogo("catalogo.metadados_invalidos")
@@ -246,7 +259,7 @@ def miniatura(jogo: Jogo, cache: Path, base: str | None = None, baixar: Callable
 
 
 def instalado(jogo: Jogo, pasta: Path | None = None) -> Path | None:
-    if jogo.instalacao_windows is None:
+    if jogo.instalacao_windows is None or jogo.instalacao_windows.tipo == "integrado":
         return None
     caminho = pasta_jogos(pasta) / jogo.id / jogo.instalacao_windows.ficheiro
     return caminho if caminho.is_file() else None

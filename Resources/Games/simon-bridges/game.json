@@ -3,6 +3,7 @@
   "nome": "Bridges",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Ligue todas as ilhas com pontes para que cada ilha tenha o número exato de ligações indicado.",
   "autores": [
     "Simon Tatham",

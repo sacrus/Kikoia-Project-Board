@@ -3,6 +3,7 @@
   "nome": "Same Game",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Remova grupos de quadrados da mesma cor para limpar o tabuleiro e ganhar mais pontos.",
   "autores": [
     "Simon Tatham",

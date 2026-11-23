@@ -3,6 +3,7 @@
   "nome": "Netslide",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Deslize linhas e colunas inteiras para ligar todos os cabos da rede ao centro.",
   "autores": [
     "Simon Tatham",

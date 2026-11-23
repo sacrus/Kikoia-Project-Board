@@ -3,6 +3,7 @@
   "nome": "Fifteen",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Deslize as peças numeradas na grelha até ficarem todas ordenadas de 1 a 15.",
   "autores": [
     "Simon Tatham",

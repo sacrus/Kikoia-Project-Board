@@ -3,6 +3,7 @@
   "nome": "Pattern",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Pinte os quadrados certos usando as sequências numéricas das linhas e colunas para revelar um desenho.",
   "autores": [
     "Simon Tatham",

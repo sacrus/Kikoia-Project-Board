@@ -3,6 +3,7 @@
   "nome": "Guess",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Adivinhe a sequência secreta de cores usando as pistas de posição e cor a cada tentativa.",
   "autores": [
     "Simon Tatham",

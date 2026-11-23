@@ -3,6 +3,7 @@
   "nome": "Pearl",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Trace um circuito fechado que passe por todas as pérolas, virando nas pretas e seguindo a direito nas brancas.",
   "autores": [
     "Simon Tatham",

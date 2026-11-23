@@ -3,6 +3,7 @@
   "nome": "Pegs",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Salte com uma peça sobre outra para a remover, até restar apenas uma peça no centro.",
   "autores": [
     "Simon Tatham",

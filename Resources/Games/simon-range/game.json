@@ -3,6 +3,7 @@
   "nome": "Range",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Pinte quadrados a preto de modo a que cada número indique quantos quadrados brancos vê em linha reta.",
   "autores": [
     "Simon Tatham",

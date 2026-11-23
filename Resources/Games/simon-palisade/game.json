@@ -3,6 +3,7 @@
   "nome": "Palisade",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Divida a grelha em regiões do mesmo tamanho respeitando o número de arestas à volta de cada pista.",
   "autores": [
     "Simon Tatham",

@@ -3,6 +3,7 @@
   "nome": "Solo",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Preencha a grelha para que cada linha, coluna e bloco contenha um de cada dígito.",
   "autores": [
     "Simon Tatham",

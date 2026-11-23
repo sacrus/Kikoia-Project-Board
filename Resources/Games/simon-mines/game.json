@@ -3,6 +3,7 @@
   "nome": "Mines",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Abra todos os quadrados seguros evitando as minas escondidas, usando os números como pistas.",
   "autores": [
     "Simon Tatham",

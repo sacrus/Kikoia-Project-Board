@@ -10,10 +10,12 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
+    QComboBox,
     QDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QProgressBar,
     QPushButton,
     QScrollArea,
@@ -24,6 +26,7 @@ from PySide6.QtWidgets import (
 from quadro import catalogo, icones, menu_prefs, tema_partilhado
 from quadro.catalogo import ErroCatalogo, Jogo, ResumoJogo
 from quadro.interruptor import interruptor
+from quadro.jogos import abrir_jogo_integrado
 
 MENSAGENS = {
     "catalogo.sem_rede": "Não foi possível contactar o repositório de recursos. Verifique a ligação à internet.",
@@ -203,6 +206,25 @@ QDialog {{
 QFrame#cabecalhoJogos {{
     background-color: {topo};
     border-bottom: 1px solid {borda};
+}}
+QFrame#barraFiltrosJogos {{
+    background-color: {topo};
+    border-bottom: 1px solid {borda};
+}}
+QLineEdit#pesquisaJogos, QComboBox#filtroJogos {{
+    background-color: {btn_sec};
+    color: {texto};
+    border: 1px solid {borda};
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 9.5pt;
+}}
+QComboBox#filtroJogos QAbstractItemView {{
+    background-color: {topo};
+    color: {texto};
+    selection-background-color: #2563EB;
+    selection-color: #FFFFFF;
+    font-size: 9.5pt;
 }}
 QLabel#tituloJogos {{
     color: {texto};
@@ -492,6 +514,8 @@ class _CartaoJogo(QFrame):
         linhas = [
             f"<p style='margin:0 0 8px 0;'>{escapar(jogo.descricao)}</p>",
         ]
+        if jogo.categoria:
+            linhas.append(f"<p style='margin:0 0 6px 0;'><b>Categoria:</b> {escapar(jogo.categoria)}</p>")
         if jogo.controlos:
             ordem_nivel = {"necessario": 0, "aconselhado": 1, "suportado": 2}
             itens = sorted(
@@ -514,9 +538,20 @@ class _CartaoJogo(QFrame):
             linhas.append("<p><i>Sem instalação para Windows nesta versão.</i></p>")
         self.texto_detalhe.setText("".join(linhas))
 
-        # Estado do badge e dos botoes (suporta arranque direto de jogos instalados como o GCompris!)
+        # Estado do badge e dos botoes (suporta jogos integrados e arranque direto como o GCompris!)
+        eh_integrado = jogo.instalacao_windows is not None and jogo.instalacao_windows.tipo == "integrado"
         eh_instalador = jogo.instalacao_windows is not None and jogo.instalacao_windows.tipo == "instalador"
-        if self.executavel is not None or (self.instalado is not None and not eh_instalador):
+        if eh_integrado:
+            self._badge.setText("Integrado")
+            self._badge.setStyleSheet(
+                "background: rgba(16, 185, 129, 44); color: #10B981; border-radius: 9px; padding: 2px 9px; font-size: 11px; font-weight: 700;"
+            )
+            self.botao_principal.setText("Iniciar jogo")
+            self.botao_principal.setProperty("papel", "iniciar")
+            self.botao_principal.setEnabled(True)
+            self.botao_reinstalar.setVisible(False)
+            self.botao_atualizar.setVisible(False)
+        elif self.executavel is not None or (self.instalado is not None and not eh_instalador):
             self._badge.setText("Instalado")
             self._badge.setStyleSheet(
                 "background: rgba(22, 163, 74, 42); color: #16A34A; border-radius: 9px; padding: 2px 9px; font-size: 11px; font-weight: 700;"
@@ -612,6 +647,51 @@ class DialogoJogos(QDialog):
         cab_layout.addWidget(self._menu)
         cab_layout.addWidget(fechar)
 
+        # --- barra de filtros (pesquisa, tipo, categoria, controlos) ---
+        filtros_frame = QFrame()
+        filtros_frame.setObjectName("barraFiltrosJogos")
+        filtros_lay = QHBoxLayout(filtros_frame)
+        filtros_lay.setContentsMargins(18, 8, 18, 8)
+        filtros_lay.setSpacing(8)
+
+        self._pesquisa = QLineEdit()
+        self._pesquisa.setObjectName("pesquisaJogos")
+        self._pesquisa.setPlaceholderText("Procurar jogo…")
+        self._pesquisa.setClearButtonEnabled(True)
+        self._pesquisa.textChanged.connect(self._aplicar_filtros)
+
+        self._filtro_tipo = QComboBox()
+        self._filtro_tipo.setObjectName("filtroJogos")
+        self._filtro_tipo.addItem("Todos os tipos", "")
+        self._filtro_tipo.addItem("Integrados (Kikoia)", "integrado")
+        self._filtro_tipo.addItem("Instalados / Prontos", "instalado")
+        self._filtro_tipo.addItem("Para transferir", "disponivel")
+        self._filtro_tipo.currentIndexChanged.connect(self._aplicar_filtros)
+
+        self._filtro_categoria = QComboBox()
+        self._filtro_categoria.setObjectName("filtroJogos")
+        self._filtro_categoria.addItem("Todas as categorias", "")
+        self._filtro_categoria.currentIndexChanged.connect(self._aplicar_filtros)
+
+        self._filtro_controlos = QComboBox()
+        self._filtro_controlos.setObjectName("filtroJogos")
+        self._filtro_controlos.addItem("Todos os controlos", "")
+        self._filtro_controlos.addItem("Caneta virtual", "caneta")
+        self._filtro_controlos.addItem("Ecrã de toque", "toque")
+        self._filtro_controlos.addItem("Rato / Touchpad", "rato")
+        self._filtro_controlos.addItem("Teclado", "teclado")
+        self._filtro_controlos.currentIndexChanged.connect(self._aplicar_filtros)
+
+        self._btn_limpar_filtros = QPushButton("Limpar")
+        self._btn_limpar_filtros.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_limpar_filtros.clicked.connect(self._limpar_filtros)
+
+        filtros_lay.addWidget(self._pesquisa, 2)
+        filtros_lay.addWidget(self._filtro_tipo, 1)
+        filtros_lay.addWidget(self._filtro_categoria, 1)
+        filtros_lay.addWidget(self._filtro_controlos, 1)
+        filtros_lay.addWidget(self._btn_limpar_filtros)
+
         # --- area de cartoes com scroll ---
         self._conteudo_cartoes = QWidget()
         self._layout_cartoes = QVBoxLayout(self._conteudo_cartoes)
@@ -635,6 +715,7 @@ class DialogoJogos(QDialog):
         raiz.setContentsMargins(0, 0, 0, 0)
         raiz.setSpacing(0)
         raiz.addWidget(cabecalho_frame)
+        raiz.addWidget(filtros_frame)
         raiz.addWidget(scroll, 1)
         raiz.addLayout(rodape)
 
@@ -717,10 +798,95 @@ class DialogoJogos(QDialog):
             return
         jogo, miniatura, instalado, executavel = valor  # type: ignore[misc]
         cartao.preencher_dados(jogo, miniatura, instalado, executavel, self._escuro)
+        self._registar_categoria(jogo.categoria)
         if cartao is self._cartao_ativo:
             self._jogo = jogo
             self._instalado = executavel or instalado
             self._texto = cartao.texto_detalhe
+        self._aplicar_filtros()
+
+    def _registar_categoria(self, categoria: str) -> None:
+        if not categoria:
+            return
+        existentes = [self._filtro_categoria.itemData(i) for i in range(self._filtro_categoria.count())]
+        if categoria not in existentes:
+            atual = self._filtro_categoria.currentData()
+            self._filtro_categoria.blockSignals(True)
+            self._filtro_categoria.addItem(categoria, categoria)
+            # Mantem as categorias ordenadas alfabeticamente apos "Todas as categorias"
+            cats = sorted(
+                [self._filtro_categoria.itemData(i) for i in range(1, self._filtro_categoria.count())],
+                key=lambda s: str(s).lower(),
+            )
+            self._filtro_categoria.clear()
+            self._filtro_categoria.addItem("Todas as categorias", "")
+            for c in cats:
+                self._filtro_categoria.addItem(str(c), c)
+            idx = self._filtro_categoria.findData(atual)
+            if idx >= 0:
+                self._filtro_categoria.setCurrentIndex(idx)
+            self._filtro_categoria.blockSignals(False)
+
+    def _limpar_filtros(self) -> None:
+        self._pesquisa.clear()
+        self._filtro_tipo.setCurrentIndex(0)
+        self._filtro_categoria.setCurrentIndex(0)
+        self._filtro_controlos.setCurrentIndex(0)
+
+    def _corresponde_filtros(self, cartao: _CartaoJogo) -> bool:
+        termo = self._pesquisa.text().strip().lower()
+        tipo_sel = str(self._filtro_tipo.currentData() or "")
+        cat_sel = str(self._filtro_categoria.currentData() or "")
+        ctrl_sel = str(self._filtro_controlos.currentData() or "")
+
+        jogo = cartao.jogo
+        if termo:
+            alvo = f"{cartao.resumo.nome} {jogo.descricao if jogo else ''} {jogo.categoria if jogo else ''}".lower()
+            if termo not in alvo:
+                return False
+
+        if jogo is None:
+            return not (tipo_sel or cat_sel or ctrl_sel)
+
+        if tipo_sel:
+            eh_integrado = jogo.instalacao_windows is not None and jogo.instalacao_windows.tipo == "integrado"
+            eh_instalador = jogo.instalacao_windows is not None and jogo.instalacao_windows.tipo == "instalador"
+            pronto = eh_integrado or cartao.executavel is not None or (cartao.instalado is not None and not eh_instalador)
+            if tipo_sel == "integrado" and not eh_integrado:
+                return False
+            if tipo_sel == "instalado" and not pronto:
+                return False
+            if tipo_sel == "disponivel" and (pronto or jogo.instalacao_windows is None):
+                return False
+
+        if cat_sel and jogo.categoria != cat_sel:
+            return False
+
+        if ctrl_sel and ctrl_sel not in jogo.controlos:
+            return False
+
+        return True
+
+    def _aplicar_filtros(self) -> None:
+        visiveis = 0
+        for cartao in self._cartoes:
+            mostrar = self._corresponde_filtros(cartao)
+            cartao.setVisible(mostrar)
+            if mostrar:
+                visiveis += 1
+        tem_filtro = bool(
+            self._pesquisa.text().strip()
+            or self._filtro_tipo.currentData()
+            or self._filtro_categoria.currentData()
+            or self._filtro_controlos.currentData()
+        )
+        if tem_filtro:
+            if visiveis == 0:
+                self._estado.setText("Nenhum jogo corresponde aos filtros escolhidos.")
+            else:
+                self._estado.setText(f"A mostrar {visiveis} de {len(self._cartoes)} jogos.")
+        elif not self._ocupado and self._cartoes:
+            self._estado.setText("")
 
     def _alternar_cartao(self, cartao: _CartaoJogo) -> None:
         if self._ocupado:
@@ -758,6 +924,12 @@ class DialogoJogos(QDialog):
     def _acao_cartao(self, cartao: _CartaoJogo) -> None:
         jogo = cartao.jogo
         if jogo is None or self._ocupado:
+            return
+        # Jogos nativos integrados no Quadro arrancam imediatamente
+        if jogo.instalacao_windows is not None and jogo.instalacao_windows.tipo == "integrado" and jogo.instalacao_windows.modulo:
+            self._estado.setText(f"A abrir {jogo.nome}…")
+            abrir_jogo_integrado(jogo.instalacao_windows.modulo, self)
+            self._estado.setText(f"{jogo.nome} concluído.")
             return
         # Se ja existe executavel instalado (ex.: GCompris.exe), arranca diretamente o jogo!
         if cartao.executavel is not None:

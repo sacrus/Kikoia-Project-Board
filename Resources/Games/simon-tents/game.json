@@ -3,6 +3,7 @@
   "nome": "Tents",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Coloque uma tenda junto a cada árvore sem que duas tendas se toquem, respeitando os totais das linhas e colunas.",
   "autores": [
     "Simon Tatham",

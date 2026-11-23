@@ -3,6 +3,7 @@
   "nome": "Rectangles",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Divida a grelha em retângulos, cada um contendo um número igual à sua área.",
   "autores": [
     "Simon Tatham",

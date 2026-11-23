@@ -3,6 +3,7 @@
   "nome": "Cube",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Role o poliedro sobre a grelha para apanhar toda a tinta azul nas suas faces.",
   "autores": [
     "Simon Tatham",

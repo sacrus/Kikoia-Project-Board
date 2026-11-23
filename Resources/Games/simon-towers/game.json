@@ -3,6 +3,7 @@
   "nome": "Towers",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Preencha a grelha com torres de alturas diferentes para que o número visível de cada lado coincida com as pistas.",
   "autores": [
     "Simon Tatham",

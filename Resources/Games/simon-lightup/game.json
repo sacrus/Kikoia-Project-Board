@@ -3,6 +3,7 @@
   "nome": "Light Up",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Coloque lâmpadas para iluminar toda a grelha sem que duas lâmpadas se iluminem mutuamente.",
   "autores": [
     "Simon Tatham",

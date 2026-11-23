@@ -3,6 +3,7 @@
   "nome": "Galaxies",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Divida a grelha em regiões simétricas, cada uma centrada num ponto.",
   "autores": [
     "Simon Tatham",

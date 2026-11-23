@@ -3,6 +3,7 @@
   "nome": "Signpost",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Ligue os quadrados num caminho contínuo seguindo a direção das setas do início ao fim.",
   "autores": [
     "Simon Tatham",

@@ -3,6 +3,7 @@
   "nome": "Loopy",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Desenhe um único circuito fechado respeitando o número de segmentos à volta de cada célula numerada.",
   "autores": [
     "Simon Tatham",

@@ -3,6 +3,7 @@
   "nome": "Flip",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Vire grupos de quadrados até que todo o tabuleiro fique da mesma cor.",
   "autores": [
     "Simon Tatham",

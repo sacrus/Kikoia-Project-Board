@@ -2,6 +2,7 @@
   "id": "gcompris",
   "nome": "GCompris",
   "publico": "Crianças",
+  "categoria": "Educativo",
   "descricao": "Conjunto de atividades educativas para crianças: lógica, memória, linguagem, matemática e outras áreas.",
   "autores": [
     "Timothée Giet and others"

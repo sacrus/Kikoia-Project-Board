@@ -3,6 +3,7 @@
   "nome": "Flood",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Mude a cor a partir do canto superior esquerdo até pintar todo o tabuleiro de uma só cor no menor número de jogadas.",
   "autores": [
     "Simon Tatham",

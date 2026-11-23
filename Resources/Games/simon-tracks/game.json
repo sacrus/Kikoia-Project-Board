@@ -3,6 +3,7 @@
   "nome": "Tracks",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Construa uma linha de comboio entre A e B respeitando o número de carris em cada linha e coluna.",
   "autores": [
     "Simon Tatham",

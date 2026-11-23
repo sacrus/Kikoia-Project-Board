@@ -3,6 +3,7 @@
   "nome": "Slant",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Desenhe uma diagonal em cada quadrado sem formar ciclos, respeitando o número de linhas em cada cruzamento.",
   "autores": [
     "Simon Tatham",

@@ -3,6 +3,7 @@
   "nome": "Singles",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Pinte números repetidos a preto para que cada linha e coluna tenha apenas números únicos e os brancos fiquem ligados.",
   "autores": [
     "Simon Tatham",

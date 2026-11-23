@@ -3,6 +3,7 @@
   "nome": "Unruly",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Pinte a grelha a preto e branco com igual quantidade em cada linha e coluna, sem três iguais seguidos.",
   "autores": [
     "Simon Tatham",

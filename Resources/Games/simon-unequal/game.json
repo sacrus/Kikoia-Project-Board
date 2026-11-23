@@ -3,6 +3,7 @@
   "nome": "Unequal",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Preencha a grelha com números únicos por linha e coluna respeitando todos os sinais de maior e menor.",
   "autores": [
     "Simon Tatham",

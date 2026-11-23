@@ -3,6 +3,7 @@
   "nome": "Filling",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Preencha os espaços vazios com números para formar regiões ligadas cujo tamanho corresponde ao próprio número.",
   "autores": [
     "Simon Tatham",

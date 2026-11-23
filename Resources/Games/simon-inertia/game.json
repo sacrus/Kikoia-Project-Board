@@ -3,6 +3,7 @@
   "nome": "Inertia",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Deslize a bola pelo labirinto para recolher todas as joias sem cair nas minas.",
   "autores": [
     "Simon Tatham",

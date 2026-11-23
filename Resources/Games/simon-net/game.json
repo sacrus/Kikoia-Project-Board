@@ -3,6 +3,7 @@
   "nome": "Net",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Rode os segmentos de rede até que todos os terminais fiquem ligados ao servidor central sem ciclos.",
   "autores": [
     "Simon Tatham",

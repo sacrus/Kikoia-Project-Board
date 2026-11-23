@@ -3,6 +3,7 @@
   "nome": "Sixteen",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Deslize linhas e colunas em ciclo até ordenar todos os números da grelha.",
   "autores": [
     "Simon Tatham",

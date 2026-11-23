@@ -3,6 +3,7 @@
   "nome": "Mosaic",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Pinte as células a preto ou branco de modo a que cada número indique quantas células pretas existem à sua volta.",
   "autores": [
     "Simon Tatham",

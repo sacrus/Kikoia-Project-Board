@@ -3,6 +3,7 @@
   "nome": "Keen",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Preencha a grelha com números sem repetir por linha ou coluna, respeitando as operações aritméticas de cada bloco.",
   "autores": [
     "Simon Tatham",

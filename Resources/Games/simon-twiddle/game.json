@@ -3,6 +3,7 @@
   "nome": "Twiddle",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Rode blocos de 2×2 quadrados até colocar todos os números por ordem.",
   "autores": [
     "Simon Tatham",

@@ -7,6 +7,11 @@
       "nome": "GCompris"
     },
     {
+      "id": "kikoia-caminho-letras",
+      "pasta": "Games/kikoia-caminho-letras",
+      "nome": "Caminho das Letras"
+    },
+    {
       "id": "simon-blackbox",
       "pasta": "Games/simon-blackbox",
       "nome": "Black Box"

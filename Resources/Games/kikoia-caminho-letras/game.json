@@ -1,0 +1,31 @@
+{
+  "id": "kikoia-caminho-letras",
+  "nome": "Caminho das Letras",
+  "colecao": "Jogos Kikoia",
+  "publico": "Crianças",
+  "categoria": "Caligrafia e Escrita",
+  "descricao": "Conduz um veículo por estradas em forma de letras cursivas e números sem embater nos obstáculos da floresta, da cidade e das obras!",
+  "autores": [
+    "Projeto Kikoia"
+  ],
+  "copyright": "Copyright 2026 Projeto Kikoia",
+  "licenca": "Projeto Kikoia",
+  "licenca_url": "https://github.com/sacrus/Kikoia-Project-Board",
+  "site": "https://github.com/sacrus/Kikoia-Project-Board",
+  "fonte_oficial": "https://github.com/sacrus/Kikoia-Project-Board",
+  "modo": "janela",
+  "controlos": {
+    "caneta": "aconselhado",
+    "toque": "aconselhado",
+    "rato": "suportado"
+  },
+  "instalacao": {
+    "windows": {
+      "tipo": "integrado",
+      "modulo": "caminho_letras"
+    }
+  },
+  "screenshots": [
+    "screenshots/thumb.png"
+  ]
+}

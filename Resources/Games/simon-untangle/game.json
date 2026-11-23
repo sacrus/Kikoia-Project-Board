@@ -3,6 +3,7 @@
   "nome": "Untangle",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Arraste os pontos até que nenhuma das linhas que os ligam se cruze.",
   "autores": [
     "Simon Tatham",

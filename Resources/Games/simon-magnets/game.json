@@ -3,6 +3,7 @@
   "nome": "Magnets",
   "colecao": "Simon Tatham's Portable Puzzle Collection",
   "publico": "Adolescentes",
+  "categoria": "Lógica e Puzzles",
   "descricao": "Coloque ímanes (+ e −) respeitando os totais das linhas e colunas, sem polos iguais lado a lado.",
   "autores": [
     "Simon Tatham",
