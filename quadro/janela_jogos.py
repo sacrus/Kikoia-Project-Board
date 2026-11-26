@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import html
+import sys
 import threading
 from collections.abc import Callable
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
+from PySide6.QtCore import QObject, QPointF, QRectF, Qt, QUrl, Signal
+from PySide6.QtGui import QColor, QDesktopServices, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -23,8 +24,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from quadro import catalogo, icones, menu_prefs, tema_partilhado
+from quadro import catalogo, icones, idiomas, menu_prefs, tema_partilhado
+from quadro.area_util import adaptar_a_area_util
 from quadro.catalogo import ErroCatalogo, Jogo, ResumoJogo
+from quadro.idiomas import t
 from quadro.interruptor import interruptor
 from quadro.jogos import abrir_jogo_integrado
 
@@ -55,18 +58,12 @@ def _ligacao(nome: str, url: str, cor: str) -> str:
     return f'<a href="{html.escape(url, quote=True)}" style="color:{cor}; text-decoration:none; font-weight:600;">{html.escape(nome)}</a>'
 
 
-_ROTULOS_CONTROLO = {
-    "rato": "Rato / Touchpad",
-    "teclado": "Teclado",
-    "caneta": "Caneta virtual",
-    "toque": "Ecrã de toque",
-}
+def _rotulo_controlo(tipo: str) -> str:
+    return t(f"jogos.ctrl_{tipo}") if tipo in ("rato", "teclado", "caneta", "toque") else tipo
 
-_ROTULOS_NIVEL = {
-    "necessario": "necessário",
-    "aconselhado": "aconselhado",
-    "suportado": "suportado",
-}
+
+def _rotulo_nivel(nivel: str) -> str:
+    return t(f"jogos.nivel_{nivel}") if nivel in ("necessario", "aconselhado", "suportado") else nivel
 
 
 def _icone_controlo(tipo: str, cor: str, tamanho: int = 16) -> QPixmap:
@@ -115,14 +112,14 @@ def _icone_controlo(tipo: str, cor: str, tamanho: int = 16) -> QPixmap:
 
 def _criar_etiqueta_controlo(tipo: str, nivel: str, escuro: bool) -> QFrame:
     """Cria uma etiqueta (pill) com ícone vetorial + texto legível para o dispositivo de entrada."""
-    nome = _ROTULOS_CONTROLO.get(tipo, tipo)
-    nivel_txt = _ROTULOS_NIVEL.get(nivel, nivel)
+    nome = _rotulo_controlo(tipo)
+    nivel_txt = _rotulo_nivel(nivel)
 
     if nivel == "necessario":
         bg = "rgba(234, 88, 12, 48)" if escuro else "rgba(234, 88, 12, 26)"
         borda = "#FB923C" if escuro else "#EA580C"
         cor_txt = "#FDBA74" if escuro else "#C2410C"
-        rotulo = f"{nome} · Necessário"
+        rotulo = f"{nome} · {t('jogos.nivel_necessario_curto')}"
     elif nivel == "aconselhado":
         bg = "rgba(59, 130, 246, 36)" if escuro else "rgba(37, 99, 235, 20)"
         borda = "rgba(96, 165, 250, 95)" if escuro else "rgba(37, 99, 235, 75)"
@@ -515,7 +512,7 @@ class _CartaoJogo(QFrame):
             f"<p style='margin:0 0 8px 0;'>{escapar(jogo.descricao)}</p>",
         ]
         if jogo.categoria:
-            linhas.append(f"<p style='margin:0 0 6px 0;'><b>Categoria:</b> {escapar(jogo.categoria)}</p>")
+            linhas.append(f"<p style='margin:0 0 6px 0;'><b>{escapar(t('jogos.categoria'))}</b> {escapar(jogo.categoria)}</p>")
         if jogo.controlos:
             ordem_nivel = {"necessario": 0, "aconselhado": 1, "suportado": 2}
             itens = sorted(
@@ -523,67 +520,85 @@ class _CartaoJogo(QFrame):
                 key=lambda par: (ordem_nivel.get(par[1], 9), catalogo.DISPOSITIVOS_CONTROLO.index(par[0])),
             )
             partes = [
-                f"{_ROTULOS_CONTROLO.get(t, t)} ({_ROTULOS_NIVEL.get(n, n)})"
-                for t, n in itens
+                f"{_rotulo_controlo(t_)} ({_rotulo_nivel(n_)})"
+                for t_, n_ in itens
             ]
-            linhas.append(f"<p style='margin:0 0 8px 0;'><b>Como jogar:</b> {escapar(' · '.join(partes))}</p>")
+            linhas.append(f"<p style='margin:0 0 8px 0;'><b>{escapar(t('jogos.como_jogar'))}</b> {escapar(' · '.join(partes))}</p>")
         linhas.extend([
-            f"<p style='margin:0;'><b>Autores:</b> {escapar(', '.join(jogo.autores))}<br>",
-            f"<b>Copyright:</b> {escapar(jogo.copyright)}<br>",
-            f"<b>Licença:</b> {_ligacao(jogo.licenca, jogo.licenca_url, cor_link)} · "
-            f"<b>Site:</b> {_ligacao(jogo.site, jogo.site, cor_link)} · "
-            f"<b>Fonte:</b> {_ligacao('download oficial', jogo.fonte_oficial, cor_link)}</p>",
+            f"<p style='margin:0;'><b>{escapar(t('jogos.autores'))}</b> {escapar(', '.join(jogo.autores))}<br>",
+            f"<b>{escapar(t('jogos.copyright'))}</b> {escapar(jogo.copyright)}<br>",
+            f"<b>{escapar(t('jogos.licenca'))}</b> {_ligacao(jogo.licenca, jogo.licenca_url, cor_link)} · "
+            f"<b>{escapar(t('jogos.site'))}</b> {_ligacao(jogo.site, jogo.site, cor_link)} · "
+            f"<b>{escapar(t('jogos.fonte'))}</b> {_ligacao(t('jogos.download_oficial'), jogo.fonte_oficial, cor_link)}</p>",
         ])
-        if jogo.instalacao_windows is None:
-            linhas.append("<p><i>Sem instalação para Windows nesta versão.</i></p>")
+        if jogo.instalacao_windows is None and jogo.instalacao_linux is None:
+            linhas.append(f"<p><i>{escapar(t('jogos.sem_windows'))}</i></p>")
+        elif sys.platform != "win32" and self.executavel is None and not (jogo.instalacao_windows and jogo.instalacao_windows.tipo == "integrado"):
+            cmd_linux = catalogo.comando_instalacao_linux(jogo)
+            if cmd_linux:
+                linhas.append(f"<p style='margin:6px 0 0 0;'><b>Linux:</b> <code>{escapar(cmd_linux)}</code></p>")
         self.texto_detalhe.setText("".join(linhas))
 
         # Estado do badge e dos botoes (suporta jogos integrados e arranque direto como o GCompris!)
-        eh_integrado = jogo.instalacao_windows is not None and jogo.instalacao_windows.tipo == "integrado"
+        eh_integrado = (
+            (jogo.instalacao_windows is not None and jogo.instalacao_windows.tipo == "integrado")
+            or (jogo.instalacao_linux is not None and jogo.instalacao_linux.tipo == "integrado")
+        )
         eh_instalador = jogo.instalacao_windows is not None and jogo.instalacao_windows.tipo == "instalador"
+        eh_pacote_linux = sys.platform != "win32" and not eh_integrado
         if eh_integrado:
-            self._badge.setText("Integrado")
+            self._badge.setText(t("jogos.badge_integrado"))
             self._badge.setStyleSheet(
                 "background: rgba(16, 185, 129, 44); color: #10B981; border-radius: 9px; padding: 2px 9px; font-size: 11px; font-weight: 700;"
             )
-            self.botao_principal.setText("Iniciar jogo")
+            self.botao_principal.setText(t("jogos.btn_iniciar"))
             self.botao_principal.setProperty("papel", "iniciar")
             self.botao_principal.setEnabled(True)
             self.botao_reinstalar.setVisible(False)
             self.botao_atualizar.setVisible(False)
-        elif self.executavel is not None or (self.instalado is not None and not eh_instalador):
-            self._badge.setText("Instalado")
+        elif self.executavel is not None or (not eh_pacote_linux and self.instalado is not None and not eh_instalador):
+            self._badge.setText(t("jogos.badge_instalado"))
             self._badge.setStyleSheet(
                 "background: rgba(22, 163, 74, 42); color: #16A34A; border-radius: 9px; padding: 2px 9px; font-size: 11px; font-weight: 700;"
             )
-            self.botao_principal.setText("Iniciar jogo")
+            self.botao_principal.setText(t("jogos.btn_iniciar"))
             self.botao_principal.setProperty("papel", "iniciar")
             self.botao_principal.setEnabled(True)
-            self.botao_reinstalar.setVisible(eh_instalador and self.instalado is not None)
+            self.botao_reinstalar.setVisible(not eh_pacote_linux and eh_instalador and self.instalado is not None)
             self.botao_atualizar.setVisible(False)
-        elif self.instalado is not None and eh_instalador:
-            self._badge.setText("Instalador pronto")
+        elif not eh_pacote_linux and self.instalado is not None and eh_instalador:
+            self._badge.setText(t("jogos.badge_instalador"))
             self._badge.setStyleSheet(
                 "background: rgba(245, 158, 11, 45); color: #D97706; border-radius: 9px; padding: 2px 9px; font-size: 11px; font-weight: 700;"
             )
-            self.botao_principal.setText("Executar instalador")
+            self.botao_principal.setText(t("jogos.btn_instalador"))
             self.botao_principal.setProperty("papel", "primario")
             self.botao_principal.setEnabled(True)
             self.botao_reinstalar.setVisible(False)
             self.botao_atualizar.setVisible(True)
-        elif jogo.instalacao_windows is not None:
-            self._badge.setText("Disponível")
+        elif eh_pacote_linux and (jogo.instalacao_linux is not None or jogo.instalacao_windows is not None):
+            self._badge.setText(t("jogos.badge_disponivel"))
             self._badge.setStyleSheet(
                 "background: rgba(37, 99, 235, 36); color: #2563EB; border-radius: 9px; padding: 2px 9px; font-size: 11px; font-weight: 700;"
             )
-            self.botao_principal.setText("Descarregar e instalar" if eh_instalador else "Descarregar e iniciar")
+            self.botao_principal.setText(t("jogos.btn_desc_iniciar"))
+            self.botao_principal.setProperty("papel", "primario")
+            self.botao_principal.setEnabled(True)
+            self.botao_reinstalar.setVisible(False)
+            self.botao_atualizar.setVisible(False)
+        elif jogo.instalacao_windows is not None:
+            self._badge.setText(t("jogos.badge_disponivel"))
+            self._badge.setStyleSheet(
+                "background: rgba(37, 99, 235, 36); color: #2563EB; border-radius: 9px; padding: 2px 9px; font-size: 11px; font-weight: 700;"
+            )
+            self.botao_principal.setText(t("jogos.btn_desc_instalar") if eh_instalador else t("jogos.btn_desc_iniciar"))
             self.botao_principal.setProperty("papel", "primario")
             self.botao_principal.setEnabled(True)
             self.botao_reinstalar.setVisible(False)
             self.botao_atualizar.setVisible(eh_instalador)
         else:
-            self._badge.setText("Indisponível")
-            self.botao_principal.setText("Indisponível")
+            self._badge.setText(t("jogos.badge_indisponivel"))
+            self.botao_principal.setText(t("jogos.badge_indisponivel"))
             self.botao_principal.setProperty("papel", "")
             self.botao_principal.setEnabled(False)
             self.botao_reinstalar.setVisible(False)
@@ -606,8 +621,10 @@ class _AdaptadorLista:
 class DialogoJogos(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Jogos")
+        idiomas.carregar_partilhado()
+        self.setWindowTitle(t("jogos.titulo"))
         self.resize(860, 620)
+        adaptar_a_area_util(self)
         self._base = catalogo.base_recursos()
         self._resumos: list[ResumoJogo] = []
         self._cartoes: list[_CartaoJogo] = []
@@ -628,18 +645,18 @@ class DialogoJogos(QDialog):
 
         titulos = QVBoxLayout()
         titulos.setSpacing(2)
-        lbl_titulo = QLabel("Jogos")
+        lbl_titulo = QLabel(t("jogos.titulo"))
         lbl_titulo.setObjectName("tituloJogos")
-        lbl_sub = QLabel("Clique num cartão para expandir os detalhes e iniciar")
+        lbl_sub = QLabel(t("jogos.subtitulo"))
         lbl_sub.setObjectName("subtituloJogos")
         titulos.addWidget(lbl_titulo)
         titulos.addWidget(lbl_sub)
 
-        self._menu = interruptor("No menu", menu_prefs.ler()["jogos"])
-        self._menu.setToolTip("Mostrar ou ocultar o botão de Jogos no menu do Quadro")
+        self._menu = interruptor(t("geral.no_menu"), menu_prefs.ler()["jogos"])
+        self._menu.setToolTip(t("jogos.tooltip_menu"))
         self._menu.toggled.connect(self._alterar_menu)
 
-        fechar = QPushButton("Fechar")
+        fechar = QPushButton(t("geral.fechar"))
         fechar.setCursor(Qt.CursorShape.PointingHandCursor)
         fechar.clicked.connect(self.accept)
 
@@ -656,33 +673,33 @@ class DialogoJogos(QDialog):
 
         self._pesquisa = QLineEdit()
         self._pesquisa.setObjectName("pesquisaJogos")
-        self._pesquisa.setPlaceholderText("Procurar jogo…")
+        self._pesquisa.setPlaceholderText(t("jogos.procurar"))
         self._pesquisa.setClearButtonEnabled(True)
         self._pesquisa.textChanged.connect(self._aplicar_filtros)
 
         self._filtro_tipo = QComboBox()
         self._filtro_tipo.setObjectName("filtroJogos")
-        self._filtro_tipo.addItem("Todos os tipos", "")
-        self._filtro_tipo.addItem("Integrados (Kikoia)", "integrado")
-        self._filtro_tipo.addItem("Instalados / Prontos", "instalado")
-        self._filtro_tipo.addItem("Para transferir", "disponivel")
+        self._filtro_tipo.addItem(t("jogos.todos_tipos"), "")
+        self._filtro_tipo.addItem(t("jogos.tipo_integrado"), "integrado")
+        self._filtro_tipo.addItem(t("jogos.tipo_instalado"), "instalado")
+        self._filtro_tipo.addItem(t("jogos.tipo_disponivel"), "disponivel")
         self._filtro_tipo.currentIndexChanged.connect(self._aplicar_filtros)
 
         self._filtro_categoria = QComboBox()
         self._filtro_categoria.setObjectName("filtroJogos")
-        self._filtro_categoria.addItem("Todas as categorias", "")
+        self._filtro_categoria.addItem(t("jogos.todas_categorias"), "")
         self._filtro_categoria.currentIndexChanged.connect(self._aplicar_filtros)
 
         self._filtro_controlos = QComboBox()
         self._filtro_controlos.setObjectName("filtroJogos")
-        self._filtro_controlos.addItem("Todos os controlos", "")
-        self._filtro_controlos.addItem("Caneta virtual", "caneta")
-        self._filtro_controlos.addItem("Ecrã de toque", "toque")
-        self._filtro_controlos.addItem("Rato / Touchpad", "rato")
-        self._filtro_controlos.addItem("Teclado", "teclado")
+        self._filtro_controlos.addItem(t("jogos.todos_controlos"), "")
+        self._filtro_controlos.addItem(t("jogos.ctrl_caneta"), "caneta")
+        self._filtro_controlos.addItem(t("jogos.ctrl_toque"), "toque")
+        self._filtro_controlos.addItem(t("jogos.ctrl_rato"), "rato")
+        self._filtro_controlos.addItem(t("jogos.ctrl_teclado"), "teclado")
         self._filtro_controlos.currentIndexChanged.connect(self._aplicar_filtros)
 
-        self._btn_limpar_filtros = QPushButton("Limpar")
+        self._btn_limpar_filtros = QPushButton(t("geral.limpar"))
         self._btn_limpar_filtros.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_limpar_filtros.clicked.connect(self._limpar_filtros)
 
@@ -819,7 +836,7 @@ class DialogoJogos(QDialog):
                 key=lambda s: str(s).lower(),
             )
             self._filtro_categoria.clear()
-            self._filtro_categoria.addItem("Todas as categorias", "")
+            self._filtro_categoria.addItem(t("jogos.todas_categorias"), "")
             for c in cats:
                 self._filtro_categoria.addItem(str(c), c)
             idx = self._filtro_categoria.findData(atual)
@@ -882,9 +899,9 @@ class DialogoJogos(QDialog):
         )
         if tem_filtro:
             if visiveis == 0:
-                self._estado.setText("Nenhum jogo corresponde aos filtros escolhidos.")
+                self._estado.setText(t("jogos.nenhum_filtro"))
             else:
-                self._estado.setText(f"A mostrar {visiveis} de {len(self._cartoes)} jogos.")
+                self._estado.setText(t("jogos.mostrar_contagem", visiveis=visiveis, total=len(self._cartoes)))
         elif not self._ocupado and self._cartoes:
             self._estado.setText("")
 
@@ -931,9 +948,22 @@ class DialogoJogos(QDialog):
             abrir_jogo_integrado(jogo.instalacao_windows.modulo, self)
             self._estado.setText(f"{jogo.nome} concluído.")
             return
-        # Se ja existe executavel instalado (ex.: GCompris.exe), arranca diretamente o jogo!
+        # Se ja existe executavel instalado (ex.: GCompris.exe ou gcompris-qt / sgt-puzzles), arranca diretamente!
         if cartao.executavel is not None:
             self._abrir(cartao.executavel, jogo, "executavel")
+            return
+        if sys.platform != "win32":
+            self._ocupado = True
+            cartao.botao_principal.setEnabled(False)
+            cartao.barra.setVisible(True)
+            cartao.barra.setRange(0, 100)
+            cartao.barra.setValue(0)
+            self._estado.setText(f"A instalar a versão Linux de {jogo.nome}…")
+            self._correr(
+                lambda progresso: catalogo.transferir_linux(jogo, progresso=progresso),
+                lambda resultado: self._transferido(cartao, jogo, resultado),
+                lambda rec, tot: self._progresso(cartao, rec, tot),
+            )
             return
         if cartao.instalado is not None:
             tipo = jogo.instalacao_windows.tipo if jogo.instalacao_windows else "executavel"
@@ -968,10 +998,17 @@ class DialogoJogos(QDialog):
             return
         cartao.instalado = valor  # type: ignore[assignment]
         cartao.executavel = catalogo.executavel_instalado(jogo)
-        cartao.atualizar_texto_e_estado(self._escuro)
-        self._estado.setText("Verificado (SHA-256 confere com o registo oficial).")
-        tipo = jogo.instalacao_windows.tipo if jogo.instalacao_windows else "executavel"
-        self._abrir(cartao.executavel or valor, jogo, "executavel" if cartao.executavel else tipo)  # type: ignore[arg-type]
+        if sys.platform != "win32":
+            # A colecao sgt-puzzles instala os 40 jogos de uma so vez: atualiza todos os cartoes!
+            for outro in self._cartoes:
+                if outro.jogo is not None:
+                    outro.executavel = catalogo.executavel_instalado(outro.jogo)
+                    outro.atualizar_texto_e_estado(self._escuro)
+        else:
+            cartao.atualizar_texto_e_estado(self._escuro)
+        self._estado.setText("Instalado e verificado com sucesso. A iniciar o jogo…")
+        tipo = "executavel" if (sys.platform != "win32" or cartao.executavel) else (jogo.instalacao_windows.tipo if jogo.instalacao_windows else "executavel")
+        self._abrir(cartao.executavel or valor, jogo, tipo)  # type: ignore[arg-type]
 
     def _abrir(self, caminho: Path, jogo: Jogo, tipo: str) -> None:
         try:

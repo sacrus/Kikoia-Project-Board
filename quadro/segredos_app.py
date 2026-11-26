@@ -27,11 +27,9 @@ LEGADO_OPENVERSE = "openverse.json"
 
 
 def pasta(base: Path | None = None) -> Path:
-    if base is not None:
-        base.mkdir(parents=True, exist_ok=True)
-        return base
-    raiz = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-    destino = Path(raiz) / "Kikoia" / "Quadro"
+    from quadro.paths import pasta_quadro
+
+    destino = pasta_quadro(base)
     destino.mkdir(parents=True, exist_ok=True)
     return destino
 
@@ -52,11 +50,30 @@ def ler(base: Path | None = None) -> dict[str, str]:
     return {chave: valor for chave, valor in dados.items() if chave in CHAVES and isinstance(valor, str)}
 
 
+def _ler_embutidos() -> dict[str, str]:
+    """Lê chaves embutidas apenas em builds oficiais (módulo opcional, fora do Git)."""
+    try:
+        from quadro import _segredos_embutidos  # type: ignore[attr-defined]
+
+        dados = _segredos_embutidos.ler()
+    except Exception:
+        return {}
+    if not isinstance(dados, dict):
+        return {}
+    return {chave: valor.strip() for chave, valor in dados.items() if chave in CHAVES and isinstance(valor, str) and valor.strip()}
+
+
 def obter(chave: str, base: Path | None = None) -> str | None:
     if chave not in CHAVES:
         raise KeyError(chave)
     valor = ler(base).get(chave, "").strip()
-    return valor or None
+    if valor:
+        return valor
+    if base is None:
+        embutido = _ler_embutidos().get(chave, "").strip()
+        if embutido:
+            return embutido
+    return None
 
 
 def gravar(valores: dict[str, str], base: Path | None = None) -> None:

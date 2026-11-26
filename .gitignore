@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+build/
+dist/
+*.spec.bak
+*.log
+.env
+PENDENTES.md
+ferramentas/
+segredos.bin
+segredos.tmp
+openverse.json
+oauth_google.json
+quadro/_segredos_embutidos.py

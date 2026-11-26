@@ -12,11 +12,12 @@ import sys
 import time
 from dataclasses import dataclass
 
-from PySide6.QtCore import QEvent, QPointF, QRectF, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QPointF, QRect, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QBrush,
     QColor,
     QFont,
+    QGuiApplication,
     QLinearGradient,
     QPainter,
     QPainterPath,
@@ -38,7 +39,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from quadro import tema_partilhado
+from quadro import idiomas, tema_partilhado
+from quadro.idiomas import t
 from quadro.jogos import caligrafia, sons
 
 _CENARIOS = ("floresta", "cidade", "obra")
@@ -153,6 +155,7 @@ class AreaCaminhoLetras(QWidget):
         # Proteção para caneta em monitor touchscreen (rejeição de palma e multi-toque)
         self._caneta_em_proximidade = False
         self._ultimo_uso_caneta = 0.0
+        self._ultimo_toque_real = 0.0
         self._touch_id_ativo: int | None = None
         self._origem_ativa: str | None = None  # "caneta", "toque", "rato"
 
@@ -174,6 +177,7 @@ class AreaCaminhoLetras(QWidget):
         self._timer_proximo.timeout.connect(self.proximo_nivel)
 
         self.iniciar_nivel(1)
+        sons.precarregar(("embate", "ding", "aplausos"))
 
     # --- Gestão de níveis e geometria ---------------------------------------------
 
@@ -325,6 +329,7 @@ class AreaCaminhoLetras(QWidget):
             self._ultimo_uso_caneta = time.monotonic()
             return True
         if tipo in (QEvent.Type.TouchBegin, QEvent.Type.TouchUpdate, QEvent.Type.TouchEnd, QEvent.Type.TouchCancel):
+            self._ultimo_toque_real = time.monotonic()
             # Se a caneta estiver ativa/próxima, ignora completamente qualquer toque (palma da mão!)
             if self._caneta_prioritaria():
                 evento.accept()
@@ -379,9 +384,15 @@ class AreaCaminhoLetras(QWidget):
         else:
             super().tabletEvent(evento)
 
+    def _rato_sintetizado_recente(self, evento) -> bool:
+        return (
+            evento.source() != Qt.MouseEventSource.MouseEventNotSynthesized
+            and (time.monotonic() - self._ultimo_toque_real) < 0.30
+        )
+
     def mousePressEvent(self, evento) -> None:  # noqa: N802
-        # Ignora eventos de rato sintetizados pelo Windows a partir de toque ou caneta
-        if evento.source() != Qt.MouseEventSource.MouseEventNotSynthesized or self._caneta_prioritaria():
+        # Ignora eventos de rato sintetizados apenas quando acabou de ocorrer um QTouchEvent real
+        if self._rato_sintetizado_recente(evento) or self._caneta_prioritaria():
             evento.accept()
             return
         if evento.button() == Qt.MouseButton.LeftButton:
@@ -390,7 +401,7 @@ class AreaCaminhoLetras(QWidget):
         super().mousePressEvent(evento)
 
     def mouseMoveEvent(self, evento) -> None:  # noqa: N802
-        if evento.source() != Qt.MouseEventSource.MouseEventNotSynthesized or self._caneta_prioritaria():
+        if self._rato_sintetizado_recente(evento) or self._caneta_prioritaria():
             evento.accept()
             return
         if self._a_desenhar and self._origem_ativa == "rato":
@@ -398,7 +409,7 @@ class AreaCaminhoLetras(QWidget):
         super().mouseMoveEvent(evento)
 
     def mouseReleaseEvent(self, evento) -> None:  # noqa: N802
-        if evento.source() != Qt.MouseEventSource.MouseEventNotSynthesized or self._caneta_prioritaria():
+        if self._rato_sintetizado_recente(evento) or self._caneta_prioritaria():
             evento.accept()
             return
         if evento.button() == Qt.MouseButton.LeftButton:
@@ -848,9 +859,11 @@ class DialogoCaminhoLetras(QDialog):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Caminho das Letras — Kikoia")
+        idiomas.carregar_partilhado()
+        self.setWindowTitle(t("caminho.titulo"))
         self.resize(980, 680)
         self._escuro = tema_partilhado.e_escuro()
+        self._ecra_completo = False
 
         cab = QFrame()
         cab.setObjectName("cabecalhoJogo")
@@ -858,32 +871,32 @@ class DialogoCaminhoLetras(QDialog):
         cab_lay.setContentsMargins(14, 10, 14, 10)
         cab_lay.setSpacing(10)
 
-        self._lbl_nivel = QLabel("Nível 1")
+        self._lbl_nivel = QLabel(t("caminho.nivel", n=1))
         self._lbl_nivel.setObjectName("badgeNivel")
         self._lbl_estrelas = QLabel("★ 0")
         self._lbl_estrelas.setObjectName("badgeEstrelas")
 
         self._combo_modo = QComboBox()
-        self._combo_modo.addItem("Letras e Números", "mistura")
-        self._combo_modo.addItem("Só Letras Cursivas", "letras")
-        self._combo_modo.addItem("Só Números", "numeros")
+        self._combo_modo.addItem(t("caminho.modo_mistura"), "mistura")
+        self._combo_modo.addItem(t("caminho.modo_letras"), "letras")
+        self._combo_modo.addItem(t("caminho.modo_numeros"), "numeros")
         self._combo_modo.currentIndexChanged.connect(self._mudar_modo)
 
-        btn_novo = QPushButton("Novo percurso")
+        btn_novo = QPushButton(t("caminho.novo"))
         btn_novo.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_novo.clicked.connect(lambda: self.area.novo_percurso())
 
-        self._btn_som = QPushButton("Som: Ligado")
+        self._btn_som = QPushButton(t("geral.som_ligado"))
         self._btn_som.setCheckable(True)
         self._btn_som.setChecked(True)
         self._btn_som.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_som.toggled.connect(self._alternar_som)
 
-        self._btn_ecra = QPushButton("Sair do ecrã completo")
+        self._btn_ecra = QPushButton(t("geral.sair_ecra_completo"))
         self._btn_ecra.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_ecra.clicked.connect(self._alternar_ecra_completo)
 
-        btn_fechar = QPushButton("Fechar")
+        btn_fechar = QPushButton(t("geral.fechar"))
         btn_fechar.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_fechar.clicked.connect(self.accept)
 
@@ -912,6 +925,50 @@ class DialogoCaminhoLetras(QDialog):
         raiz.addWidget(self._estado)
 
         self._aplicar_tema()
+        ecra = self.screen() or QGuiApplication.primaryScreen()
+        if ecra is not None:
+            ecra.availableGeometryChanged.connect(lambda _a: self._aplicar_geometria_ecra() if self._ecra_completo else None)
+
+    def iniciar_ecra_completo(self) -> None:
+        """Ativa modo de área útil completa compatível com Windows e gestores X11/Wayland no Linux."""
+        self._ecra_completo = True
+        self._btn_ecra.setText(t("geral.sair_ecra_completo"))
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
+        self._aplicar_geometria_ecra()
+
+    def _aplicar_geometria_ecra(self) -> None:
+        ecra = self.screen() or QGuiApplication.primaryScreen()
+        if ecra is None:
+            return
+        area = ecra.availableGeometry()
+        if area.width() <= 0 or area.height() <= 0:
+            return
+        if self._ecra_completo:
+            self.setGeometry(area)
+        else:
+            w = max(760, int(area.width() * 0.84))
+            h = max(480, int(area.height() * 0.84))
+            x = area.x() + (area.width() - w) // 2
+            y = area.y() + (area.height() - h) // 2
+            self.setGeometry(QRect(x, y, w, h))
+
+    def showEvent(self, evento) -> None:  # noqa: N802
+        super().showEvent(evento)
+        if self._ecra_completo:
+            self._aplicar_geometria_ecra()
+            QTimer.singleShot(0, self._aplicar_geometria_ecra)
+
+    def closeEvent(self, evento) -> None:  # noqa: N802
+        sons.parar()
+        super().closeEvent(evento)
+
+    def reject(self) -> None:
+        sons.parar()
+        super().reject()
+
+    def accept(self) -> None:
+        sons.parar()
+        super().accept()
 
     def _aplicar_tema(self) -> None:
         if self._escuro:
@@ -947,19 +1004,26 @@ class DialogoCaminhoLetras(QDialog):
 
     def _alternar_som(self, ligado: bool) -> None:
         self.area.som_ativo = ligado
-        self._btn_som.setText("Som: Ligado" if ligado else "Som: Desligado")
+        self._btn_som.setText(t("geral.som_ligado") if ligado else t("geral.som_desligado"))
 
     def _alternar_ecra_completo(self) -> None:
-        if self.isFullScreen():
-            self.showNormal()
-            self._btn_ecra.setText("Ecrã completo")
+        self._ecra_completo = not self._ecra_completo
+        if self._ecra_completo:
+            self._btn_ecra.setText(t("geral.sair_ecra_completo"))
+            self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
+            self.show()
+            self._aplicar_geometria_ecra()
         else:
-            self.showFullScreen()
-            self._btn_ecra.setText("Sair do ecrã completo")
+            self._btn_ecra.setText(t("geral.ecra_completo"))
+            if self.isFullScreen():
+                self.showNormal()
+            self.setWindowFlag(Qt.WindowType.FramelessWindowHint, False)
+            self.show()
+            self._aplicar_geometria_ecra()
 
     def _atualizar_estado(self, texto: str) -> None:
         self._estado.setText(texto)
-        self._lbl_nivel.setText(f"Nível {self.area.nivel}")
+        self._lbl_nivel.setText(t("caminho.nivel", n=self.area.nivel))
 
     def _ao_concluir(self, _nivel: int, estrelas: int) -> None:
         self._lbl_estrelas.setText(f"★ {estrelas}")
@@ -980,7 +1044,8 @@ def gerar_miniatura(destino: str, largura: int = 320, altura: int = 200) -> None
 def main() -> int:
     app = QApplication.instance() or QApplication(sys.argv)
     dlg = DialogoCaminhoLetras()
-    dlg.showFullScreen()
+    dlg.iniciar_ecra_completo()
+    dlg.show()
     return app.exec()
 
 

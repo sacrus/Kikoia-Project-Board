@@ -26,7 +26,8 @@ NOME_FICHEIRO = "regras-correio.json"
 LIMITE_ENTRADAS = 500
 EXTENSOES_EXECUTAVEIS = frozenset(
     {".exe", ".bat", ".cmd", ".com", ".scr", ".msi", ".msp", ".ps1", ".vbs", ".js", ".jar",
-     ".lnk", ".reg", ".dll", ".hta", ".pif", ".wsf"}
+     ".lnk", ".reg", ".dll", ".hta", ".pif", ".wsf",
+     ".sh", ".bash", ".run", ".bin", ".appimage", ".deb", ".rpm", ".desktop"}
 )
 _ENDERECO = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}")
 _DOMINIO = re.compile(r"[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}")

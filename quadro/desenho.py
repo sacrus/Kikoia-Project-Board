@@ -51,8 +51,9 @@ def desenhar(pintor: QPainter, quadro: Quadro, largura: int, altura: int) -> Non
 
 
 def pasta_desenhos() -> Path:
-    base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-    pasta = Path(base) / "Kikoia" / "Quadro" / "desenhos"
+    from quadro.paths import pasta_quadro
+
+    pasta = pasta_quadro() / "desenhos"
     pasta.mkdir(parents=True, exist_ok=True)
     return pasta
 

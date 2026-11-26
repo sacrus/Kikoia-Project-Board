@@ -54,6 +54,22 @@ class Instalacao:
     modulo: str | None = None
 
 
+@dataclass(frozen=True)
+class InstalacaoLinux:
+    tipo: str
+    nome_pacote: str | None = None
+    fonte: str | None = None
+    ficheiro: str | None = None
+    sha256: str | None = None
+    executavel: str | None = None
+    modulo: str | None = None
+
+
+_GCOMPRIS_LINUX_URL = "https://download.kde.org/stable/gcompris/qt/linux/gcompris-qt-26.2-Linux64.sh"
+_GCOMPRIS_LINUX_FICHEIRO = "gcompris-qt-26.2-Linux64.sh"
+_GCOMPRIS_LINUX_SHA256 = "0c73bcf93f3aa52698a1bb00c3fa19b2c17fbd751407a981ced9f390ca62db0a"
+
+
 @dataclass
 class Jogo:
     id: str
@@ -68,6 +84,7 @@ class Jogo:
     fonte_oficial: str
     screenshots: list[str] = field(default_factory=list)
     instalacao_windows: Instalacao | None = None
+    instalacao_linux: InstalacaoLinux | None = None
     controlos: dict[str, str] = field(default_factory=dict)
     categoria: str = ""
     publico: str = ""
@@ -87,8 +104,9 @@ def base_recursos() -> str:
 def pasta_jogos(dados: Path | None = None) -> Path:
     if dados is not None:
         return dados
-    base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-    return Path(base) / "Kikoia" / "Quadro" / "jogos"
+    from quadro.paths import pasta_quadro
+
+    return pasta_quadro() / "jogos"
 
 
 def pasta_cache() -> Path:
@@ -195,6 +213,7 @@ def carregar_jogo(resumo: ResumoJogo, base: str | None = None, baixar: Callable 
         fonte_oficial=_https(_texto(dados, "fonte_oficial")),
         screenshots=[_caminho_seguro(s) for s in screenshots if isinstance(s, str)],
         instalacao_windows=_instalacao(dados.get("instalacao", {}).get("windows")),
+        instalacao_linux=_instalacao_linux(dados.get("instalacao", {}).get("linux")),
         controlos=_controlos(dados.get("controlos")),
         categoria=str(dados.get("categoria") or "").strip(),
         publico=str(dados.get("publico") or "").strip(),
@@ -242,6 +261,29 @@ def _instalacao(dados: object) -> Instalacao | None:
     if executavel is not None and (not isinstance(executavel, str) or not _NOME_FICHEIRO.fullmatch(executavel)):
         raise ErroCatalogo("catalogo.metadados_invalidos")
     return Instalacao(tipo, _https(_texto(dados, "fonte")), ficheiro, sha256, executavel)
+
+
+def _instalacao_linux(dados: object) -> InstalacaoLinux | None:
+    if not isinstance(dados, dict):
+        return None
+    tipo = dados.get("tipo")
+    if not isinstance(tipo, str) or not tipo.strip():
+        return None
+    pacote = dados.get("nome_pacote")
+    fonte = dados.get("fonte")
+    ficheiro = dados.get("ficheiro")
+    sha256 = dados.get("sha256")
+    executavel = dados.get("executavel")
+    modulo = dados.get("modulo")
+    return InstalacaoLinux(
+        tipo=tipo.strip(),
+        nome_pacote=pacote.strip() if isinstance(pacote, str) and pacote.strip() else None,
+        fonte=fonte.strip() if isinstance(fonte, str) and fonte.startswith("https://") else None,
+        ficheiro=ficheiro.strip() if isinstance(ficheiro, str) and _NOME_FICHEIRO.fullmatch(ficheiro.strip()) else None,
+        sha256=sha256.strip() if isinstance(sha256, str) and _SHA256.fullmatch(sha256.strip()) else None,
+        executavel=executavel.strip() if isinstance(executavel, str) and _NOME_FICHEIRO.fullmatch(executavel.strip()) else None,
+        modulo=modulo.strip() if isinstance(modulo, str) and _MODULO.fullmatch(modulo.strip()) else None,
+    )
 
 
 def miniatura(jogo: Jogo, cache: Path, base: str | None = None, baixar: Callable | None = None) -> Path | None:
@@ -329,8 +371,65 @@ def _pastas_instalacao_windows(jogo: Jogo) -> list[Path]:
     return candidatas
 
 
+def _executavel_instalado_linux(jogo: Jogo, pasta: Path | None = None) -> Path | None:
+    """Procura o binário nativo do jogo instalado no Quadro (`pasta_jogos`) ou no sistema Linux."""
+    base_local = pasta_jogos(pasta)
+    candidatos_locais: list[Path] = []
+    candidatos_nomes: list[str] = []
+
+    if jogo.id == "gcompris":
+        candidatos_locais.extend([
+            base_local / "gcompris" / "bin" / "gcompris-qt.sh",
+            base_local / "gcompris" / "bin" / "gcompris-qt",
+            Path.home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "org.kde.gcompris",
+            Path("/var/lib/flatpak/exports/bin/org.kde.gcompris"),
+            Path.home() / "GCompris-Qt" / "bin" / "gcompris-qt.sh",
+            Path.home() / "GCompris-Qt" / "bin" / "gcompris-qt",
+            Path("/opt/gcompris-qt/bin/gcompris-qt"),
+        ])
+        candidatos_nomes.extend(["gcompris-qt", "gcompris"])
+    elif jogo.id.startswith("simon-"):
+        slug = jogo.id[len("simon-"):]
+        # Pacote extraído localmente pelo Quadro (`sgt-puzzles`) tem prioridade imediata
+        candidatos_locais.extend([
+            base_local / "sgt-puzzles" / "usr" / "games" / f"sgt-{slug}",
+            base_local / "sgt-puzzles" / "usr" / "games" / slug,
+        ])
+        # Debian/Ubuntu (`sgt-puzzles`) usa `sgt-<slug>`; outras distros usam `puzzles-<slug>` ou `<slug>`.
+        candidatos_nomes.extend([f"sgt-{slug}", f"puzzles-{slug}", slug])
+    else:
+        candidatos_nomes.append(jogo.id)
+
+    for loc in candidatos_locais:
+        if loc.is_file() and os.access(loc, os.X_OK):
+            return loc
+
+    for nome in candidatos_nomes:
+        encontrado = shutil.which(nome)
+        if encontrado:
+            return Path(encontrado)
+        for pasta_sis in (Path("/usr/games"), Path("/usr/local/games"), Path("/usr/bin")):
+            cand = pasta_sis / nome
+            if cand.is_file() and os.access(cand, os.X_OK):
+                return cand
+    return None
+
+
+def comando_instalacao_linux(jogo: Jogo) -> str | None:
+    """Sugestão de comando de pacote para instalar o jogo numa distribuição Debian/Ubuntu."""
+    if jogo.id == "gcompris":
+        return "sudo apt install gcompris-qt"
+    if jogo.instalacao_linux and jogo.instalacao_linux.nome_pacote:
+        return f"sudo apt install {jogo.instalacao_linux.nome_pacote}"
+    if jogo.id.startswith("simon-"):
+        return "sudo apt install sgt-puzzles"
+    return None
+
+
 def executavel_instalado(jogo: Jogo, pastas_extra: list[Path] | None = None) -> Path | None:
-    """Devolve o executável do jogo já instalado no sistema (ex.: GCompris.exe), se encontrado."""
+    """Devolve o executável do jogo já instalado no sistema (Windows ou Linux), se encontrado."""
+    if sys.platform != "win32" and pastas_extra is None:
+        return _executavel_instalado_linux(jogo)
     inst = jogo.instalacao_windows
     if inst is None or inst.tipo != "instalador":
         return None
@@ -394,15 +493,130 @@ def transferir(
     return destino
 
 
+def transferir_linux(
+    jogo: Jogo,
+    pasta: Path | None = None,
+    progresso: Callable[[int, int], None] | None = None,
+    baixar: Callable | None = None,
+) -> Path:
+    """Transfere e extrai automaticamente a versão Linux do jogo (sem pedir sudo) e devolve o executável."""
+    baixar = baixar or _baixar_ficheiro
+    base_jogos = pasta_jogos(pasta)
+    base_jogos.mkdir(parents=True, exist_ok=True)
+
+    # 1. GCompris: pacote autónomo oficial do KDE (verificado por SHA-256)
+    if jogo.id == "gcompris":
+        inst_l = jogo.instalacao_linux
+        url = (inst_l.fonte if inst_l and inst_l.fonte else None) or _GCOMPRIS_LINUX_URL
+        ficheiro = (inst_l.ficheiro if inst_l and inst_l.ficheiro else None) or _GCOMPRIS_LINUX_FICHEIRO
+        sha_esp = (inst_l.sha256 if inst_l and inst_l.sha256 else None) or _GCOMPRIS_LINUX_SHA256
+        destino_dir = base_jogos / "gcompris"
+        destino_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            with tempfile.TemporaryDirectory(dir=base_jogos, prefix=".descarga-gcompris-") as tmp_str:
+                tmp_sh = Path(tmp_str) / ficheiro
+                baixar(url, tmp_sh, progresso)
+                if _sha256(tmp_sh) != sha_esp:
+                    raise ErroCatalogo("catalogo.verificacao_falhou")
+                tmp_sh.chmod(0o755)
+                extraido = Path(tmp_str) / "extraido"
+                extraido.mkdir(parents=True, exist_ok=True)
+                proc = subprocess.run(
+                    ["sh", str(tmp_sh), "--skip-license", "--exclude-subdir", f"--prefix={extraido}"],
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                )
+                if proc.returncode != 0:
+                    raise ErroCatalogo("catalogo.sem_recursos")
+                if destino_dir.exists():
+                    shutil.rmtree(destino_dir)
+                shutil.move(str(extraido), str(destino_dir))
+        except ErroCatalogo:
+            raise
+        except (OSError, subprocess.TimeoutExpired) as erro:
+            raise ErroCatalogo("catalogo.sem_rede") from erro
+
+        exe = _executavel_instalado_linux(jogo, pasta=base_jogos)
+        if exe is None:
+            raise ErroCatalogo("catalogo.sem_recursos")
+        return exe
+
+    # 2. Coleção de 40 jogos do Simon Tatham (`sgt-puzzles` via repositório assinado da distribuição)
+    if jogo.id.startswith("simon-"):
+        apt_get = shutil.which("apt-get")
+        dpkg_deb = shutil.which("dpkg-deb")
+        if apt_get and dpkg_deb:
+            destino_sgt = base_jogos / "sgt-puzzles"
+            try:
+                if progresso is not None:
+                    progresso(15, 100)
+                with tempfile.TemporaryDirectory(prefix="kikoia-sgt-dl-") as tmp_str:
+                    tmp_dir = Path(tmp_str)
+                    tmp_dir.chmod(0o755)
+                    proc_dl = subprocess.run(
+                        [apt_get, "download", "sgt-puzzles"],
+                        cwd=str(tmp_dir),
+                        capture_output=True,
+                        text=True,
+                        timeout=120,
+                    )
+                    if proc_dl.returncode != 0:
+                        raise ErroCatalogo("catalogo.sem_rede")
+                    debs = list(tmp_dir.glob("sgt-puzzles*.deb"))
+                    if not debs:
+                        raise ErroCatalogo("catalogo.sem_recursos")
+                    if progresso is not None:
+                        progresso(75, 100)
+                    extraido = tmp_dir / "root"
+                    extraido.mkdir(parents=True, exist_ok=True)
+                    proc_ex = subprocess.run(
+                        [dpkg_deb, "-x", str(debs[0]), str(extraido)],
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                    )
+                    if proc_ex.returncode != 0:
+                        raise ErroCatalogo("catalogo.sem_recursos")
+                    if destino_sgt.exists():
+                        shutil.rmtree(destino_sgt)
+                    shutil.move(str(extraido), str(destino_sgt))
+                    if progresso is not None:
+                        progresso(100, 100)
+            except ErroCatalogo:
+                raise
+            except (OSError, subprocess.TimeoutExpired) as erro:
+                raise ErroCatalogo("catalogo.sem_rede") from erro
+
+            exe = _executavel_instalado_linux(jogo, pasta=base_jogos)
+            if exe is None:
+                raise ErroCatalogo("catalogo.sem_recursos")
+            return exe
+
+    raise ErroCatalogo("catalogo.so_windows")
+
+
 def abrir(caminho: Path, tipo: str) -> None:
-    """Executa o jogo (executável) ou o instalador oficial. Só funciona no Windows."""
-    if sys.platform != "win32":
-        raise ErroCatalogo("catalogo.so_windows")
-    if tipo == "instalador":
-        os.startfile(str(caminho))  # type: ignore[attr-defined]
+    """Executa o jogo (executável) ou o instalador oficial (Windows e Linux)."""
+    if sys.platform == "win32":
+        if tipo == "instalador":
+            os.startfile(str(caminho))  # type: ignore[attr-defined]
+            return
+        subprocess.Popen(
+            [str(caminho)],
+            cwd=str(caminho.parent),
+            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+        )
         return
+    if not caminho.is_file() or caminho.suffix.lower() == ".exe":
+        raise ErroCatalogo("catalogo.so_windows")
+    # Limpa variáveis Qt do processo Python/PySide6 para nunca entrarem em conflito com jogos Qt/GTK externos
+    env_limpo = os.environ.copy()
+    for var_qt in ("QT_PLUGIN_PATH", "QT_QPA_PLATFORM_PLUGIN_PATH", "QML2_IMPORT_PATH", "QML_IMPORT_PATH"):
+        env_limpo.pop(var_qt, None)
     subprocess.Popen(
         [str(caminho)],
         cwd=str(caminho.parent),
-        creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+        env=env_limpo,
+        start_new_session=True,
     )

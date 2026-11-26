@@ -12,17 +12,13 @@ import sys
 import time
 from pathlib import Path
 
+from quadro.paths import pasta_kikoia
+
 NOME_FICHEIRO = "tema_partilhado.json"
 
 
 def caminho_tema(base: Path | None = None) -> Path:
-    if base is not None:
-        return base / NOME_FICHEIRO
-    if sys.platform == "win32":
-        raiz = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-        return Path(raiz) / "Kikoia" / NOME_FICHEIRO
-    raiz = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
-    return Path(raiz) / "Kikoia" / NOME_FICHEIRO
+    return pasta_kikoia(base) / NOME_FICHEIRO
 
 
 def ler_tema(base: Path | None = None) -> dict | None:

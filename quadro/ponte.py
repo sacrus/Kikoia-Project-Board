@@ -24,6 +24,7 @@ from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QObject
 from PySide6.QtNetwork import QHostAddress, QTcpServer
 
 from quadro import acoes, icones_acoes
+from quadro.paths import pasta_quadro
 
 VERSAO_PONTE = 1
 LIMITE_LINHA = 4096
@@ -48,10 +49,7 @@ def imagens_dos_icones() -> dict[str, str]:
 
 
 def pasta(base: Path | None = None) -> Path:
-    if base is not None:
-        return base
-    raiz = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-    return Path(raiz) / "Kikoia" / "Quadro"
+    return pasta_quadro(base)
 
 
 def _erro(codigo: str) -> dict:

@@ -50,10 +50,9 @@ class Imagem:
 
 
 def pasta(base: Path | None = None) -> Path:
-    if base is not None:
-        return base
-    raiz = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-    return Path(raiz) / "Kikoia" / "Quadro"
+    from quadro.paths import pasta_quadro
+
+    return pasta_quadro(base)
 
 
 def credenciais(base: Path | None = None) -> tuple[str, str] | None:

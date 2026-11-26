@@ -27,11 +27,9 @@ PREFERENCIAS_OMISSAO = {
 
 
 def pasta(base: Path | None = None) -> Path:
-    if base is not None:
-        base.mkdir(parents=True, exist_ok=True)
-        return base
-    raiz = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-    destino = Path(raiz) / "Kikoia" / "Quadro" / "correio"
+    from quadro.paths import pasta_quadro
+
+    destino = base if base is not None else pasta_quadro() / "correio"
     destino.mkdir(parents=True, exist_ok=True)
     return destino
 

@@ -7,11 +7,12 @@ Quadro interativo para Windows (com planos futuros para outras plataformas), que
 ## Funcionalidades
 
 - **Quadro de desenho acessível:** menu principal em esferas translúcidas 3D com ícones claros e texto legível, barra contínua para ajustar o tamanho das ferramentas com pré-visualização em tempo real, caneta, borracha, borracha de riscos, formas geométricas, carimbos, pincel mágico, camadas e ferramenta de texto.
-- **Imagens e pesquisa segura:** importação de imagens locais (incluindo suporte a JPEG XL com `libjxl`), pesquisa integrada de imagens com licenças abertas através da **Openverse**, e exportação/gravação de projetos (`.kquadro`).
+- **Menu de definições em cartões:** organização clara entre *Ações do Quadro* e *Aplicações e Ferramentas*, com seleção rápida de tema, idioma e cor de fundo.
+- **Imagens e pesquisa segura:** importação de imagens locais (incluindo suporte a JPEG XL com `libjxl`), pesquisa integrada de imagens com licenças abertas através da **Openverse** com galeria moderna e ideias rápidas, e exportação/gravação de projetos (`.kquadro`, JXL, PNG, SVG).
 - **Cliente de correio integrado:** interface moderna em 3 painéis com temas claro e escuro, suporte a contas IMAP/POP3/SMTP e OAuth (Google e Microsoft), gestão de contactos com fotos, pastas, rascunhos, leitura em voz alta, anexos (incluindo projetos `.kquadro`) e regras de supervisão para crianças.
-- **Catálogo de jogos (41 jogos):** visualização em cartões expansíveis com temas claro e escuro, transferência direta a partir das fontes oficiais com verificação SHA-256, deteção e arranque direto do **GCompris** após instalação, e os **40 jogos de lógica** da *Simon Tatham's Portable Puzzle Collection*.
-- **Temas claro e escuro sincronizados:** seleção de tema centralizada nas Definições do Quadro e sincronizada automaticamente nos dois sentidos com o teclado Kikoia.
-- **Integração com o Teclado Kikoia e Android:** ponte local que permite usar o teclado Kikoia e o modo touchpad da app Android diretamente no Quadro.
+- **Catálogo de jogos (43 jogos):** visualização em cartões expansíveis com pesquisa e filtros (tipo, categoria e dispositivos de controlo — rato/touchpad, teclado, caneta virtual e ecrã de toque), transferência direta a partir das fontes oficiais com verificação SHA-256, arranque direto do **GCompris**, os **40 jogos de lógica** da *Simon Tatham's Portable Puzzle Collection* e **2 jogos nativos Kikoia integrados** (*Caminho das Letras* de caligrafia cursiva e *Dedos Musicais* para ecrã de toque).
+- **Temas e idiomas sincronizados:** temas Claro/Escuro e **4 idiomas** (`pt-PT`, `en`, `es`, `fr`) centralizados nas Definições do Quadro e sincronizados automaticamente nos dois sentidos com o teclado Kikoia.
+- **Integração com o Teclado Kikoia e Android:** ponte local que permite usar o teclado Kikoia e o modo touchpad da aplicação Android diretamente no Quadro.
 
 ## Requisitos e execução (desenvolvimento)
 
@@ -27,7 +28,7 @@ py -m quadro
 
 Os recursos são descarregados pelo Quadro apenas quando o utilizador os pede.
 
-- `Resources/index.json`: lista de jogos e ferramentas disponíveis (atualmente 41 jogos). É o único ficheiro lido na abertura.
+- `Resources/index.json`: lista de jogos e ferramentas disponíveis (atualmente 43 jogos). É o único ficheiro lido na abertura.
 - `Resources/Games/<jogo>/game.json`: dados do jogo (nome, descrição, autores, copyright, licença, websites, fonte oficial de download e SHA-256).
 - `Resources/Games/<jogo>/screenshots/`: imagem inicial (`thumb.png`) e restantes screenshots.
 - `Resources/Images/`: imagens usadas pelas ferramentas.

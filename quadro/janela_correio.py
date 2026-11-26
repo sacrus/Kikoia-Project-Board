@@ -48,7 +48,9 @@ from quadro.correio import contas, oauth, supervisor, voz
 from quadro.correio import regras as R
 from quadro.correio.html import CID_PREFIXO, sanitizar_html
 from quadro.correio.modelo import Anexo, Conta, ErroCorreio, Mensagem, conta_cpanel
-from quadro import icones_contacto, icones_correio, jxl, tema_partilhado
+from quadro import icones_contacto, icones_correio, idiomas, jxl, tema_partilhado
+from quadro.area_util import adaptar_a_area_util
+from quadro.idiomas import t
 from quadro.correio import composicao, ordenacao
 from quadro.correio.composicao import Rascunho
 from quadro.correio.servidor import Pasta, cliente_de, guardar_em_enviados, montar_mensagem
@@ -63,6 +65,7 @@ MENSAGENS = {
     "correio.destinatarios_bloqueados": "Há destinatários que não estão na lista permitida.",
     "correio.regras_alteradas": "O ficheiro de regras foi alterado fora do programa. Repõe as regras nas definições do correio.",
     "correio.voz_so_windows": "A leitura em voz alta só está disponível no Windows nesta versão.",
+    "correio.voz_indisponivel": "A leitura em voz alta não está disponível: instale uma voz Piper no Teclado Kikoia ou o pacote espeak-ng.",
     "correio.segredos_so_windows": "A palavra-passe da conta só pode ser guardada no Windows nesta versão.",
     "correio.segredos_falhou": "Não foi possível proteger a palavra-passe da conta.",
     "correio.entrada_invalida": "Endereço ou domínio inválido.",
@@ -129,8 +132,9 @@ def _imagem_do_email(origem: str, mensagem: Mensagem) -> QImage | None:
 
 def guardar_anexo(anexo: Anexo) -> Path:
     """Grava o anexo numa pasta do Quadro, com o nome do ficheiro (sem caminhos)."""
-    raiz = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-    pasta = Path(raiz) / "Kikoia" / "Quadro" / "anexos"
+    from quadro.paths import pasta_quadro
+
+    pasta = pasta_quadro() / "anexos"
     pasta.mkdir(parents=True, exist_ok=True)
     destino = pasta / (Path(anexo.nome).name or "anexo")
     destino.write_bytes(anexo.dados)
@@ -465,8 +469,10 @@ QLabel#estadoCorreio {{
 class DialogoCorreio(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Correio")
+        idiomas.carregar_partilhado()
+        self.setWindowTitle(t("correio.titulo"))
         self.resize(1180, 720)
+        adaptar_a_area_util(self)
         self._conta: tuple[Conta, str] | None = contas.carregar()
         self._regras, self._integras = R.carregar()
         self._mensagens: list[Mensagem] = []
@@ -500,60 +506,60 @@ class DialogoCorreio(QDialog):
         self._estado.setObjectName("estadoCorreio")
         self._estado.setWordWrap(True)
 
-        self._atualizar = botao_com_icone("Atualizar", "atualizar")
+        self._atualizar = botao_com_icone(t("correio.atualizar"), "atualizar")
         self._atualizar.clicked.connect(lambda _=False: self.atualizar())
-        self._voz = botao_com_icone("Ler", "voz")
-        self._voz.setToolTip("Ler em voz alta")
+        self._voz = botao_com_icone(t("correio.ler"), "voz")
+        self._voz.setToolTip(t("correio.ler"))
         self._voz.clicked.connect(lambda _=False: self._ler_em_voz_alta())
-        self._parar_voz = botao_com_icone("Parar", "parar")
-        self._parar_voz.setToolTip("Parar leitura")
+        self._parar_voz = botao_com_icone(t("correio.parar"), "parar")
+        self._parar_voz.setToolTip(t("correio.parar"))
         self._parar_voz.clicked.connect(lambda _=False: voz.parar())
-        self._desbloquear = botao_com_icone("Desbloquear...", "desbloquear")
-        self._desbloquear.setToolTip("Desbloquear com supervisor...")
+        self._desbloquear = botao_com_icone(t("correio.desbloquear"), "desbloquear")
+        self._desbloquear.setToolTip(t("correio.desbloquear"))
         self._desbloquear.clicked.connect(lambda _=False: self._desbloquear_mensagem())
-        self._adicionar = botao_com_icone("Permitir...", "permitir")
-        self._adicionar.setToolTip("Permitir este remetente...")
+        self._adicionar = botao_com_icone(t("correio.permitir"), "permitir")
+        self._adicionar.setToolTip(t("correio.permitir"))
         self._adicionar.clicked.connect(lambda _=False: self._permitir_remetente())
-        self._escrever = botao_com_icone("Escrever...", "escrever")
+        self._escrever = botao_com_icone(t("correio.escrever"), "escrever")
         self._escrever.setObjectName("btnEscrever")
         self._escrever.clicked.connect(lambda _=False: self._abrir_escrever())
-        self._configurar = botao_com_icone("Configurar...", "configurar")
+        self._configurar = botao_com_icone(t("correio.configurar"), "configurar")
         self._configurar.clicked.connect(lambda _=False: self._abrir_configurar())
-        self._contactos = botao_com_icone("Contactos...", "pessoa")
+        self._contactos = botao_com_icone(t("correio.contactos"), "pessoa")
         self._contactos.clicked.connect(lambda _=False: DialogoContactos(self).exec())
-        self._guardar_contacto = botao_com_icone("Guardar contacto", "pessoa")
-        self._guardar_contacto.setToolTip("Guardar remetente como contacto")
+        self._guardar_contacto = botao_com_icone(t("correio.guardar_contacto"), "pessoa")
+        self._guardar_contacto.setToolTip(t("correio.guardar_contacto"))
         self._guardar_contacto.clicked.connect(lambda _=False: self._guardar_remetente())
-        self._botao_anexo = botao_com_icone("Abrir anexo", "anexar")
+        self._botao_anexo = botao_com_icone(t("correio.abrir_anexo"), "anexar")
         self._botao_anexo.setObjectName("btnAbrirAnexo")
         self._botao_anexo.clicked.connect(lambda _=False: self._abrir_anexo())
-        self._apagar = botao_com_icone("Apagar", "apagar")
-        self._apagar.setToolTip("Apagar email")
+        self._apagar = botao_com_icone(t("correio.apagar"), "apagar")
+        self._apagar.setToolTip(t("correio.apagar"))
         self._apagar.clicked.connect(lambda _=False: self._apagar_mensagem())
-        self._responder = botao_com_icone("Responder", "responder")
+        self._responder = botao_com_icone(t("correio.responder"), "responder")
         self._responder.clicked.connect(lambda _=False: self._responder_a(False))
-        self._responder_todos = botao_com_icone("A todos", "responder_todos")
-        self._responder_todos.setToolTip("Responder a todos")
+        self._responder_todos = botao_com_icone(t("correio.responder_todos"), "responder_todos")
+        self._responder_todos.setToolTip(t("correio.responder_todos"))
         self._responder_todos.clicked.connect(lambda _=False: self._responder_a(True))
-        self._encaminhar = botao_com_icone("Encaminhar", "encaminhar")
+        self._encaminhar = botao_com_icone(t("correio.encaminhar"), "encaminhar")
         self._encaminhar.clicked.connect(lambda _=False: self._encaminhar_mensagem())
-        self._editar_rascunho = botao_com_icone("Rascunho", "rascunho")
-        self._editar_rascunho.setToolTip("Editar rascunho")
+        self._editar_rascunho = botao_com_icone(t("correio.rascunho"), "rascunho")
+        self._editar_rascunho.setToolTip(t("correio.rascunho"))
         self._editar_rascunho.clicked.connect(lambda _=False: self._editar_rascunho_mensagem())
-        self._lido = botao_com_icone("Lido", "lido")
-        self._lido.setToolTip("Marcar como lido / não lido")
+        self._lido = botao_com_icone(t("correio.lido"), "lido")
+        self._lido.setToolTip(t("correio.lido"))
         self._lido.clicked.connect(lambda _=False: self._alternar_lida())
-        self._estrela = botao_com_icone("Estrela", "estrela")
-        self._estrela.setToolTip("Marcar com estrela")
+        self._estrela = botao_com_icone(t("correio.estrela"), "estrela")
+        self._estrela.setToolTip(t("correio.estrela"))
         self._estrela.clicked.connect(lambda _=False: self._alternar_estrela())
-        self._mover = botao_com_icone("Mover...", "mover")
-        self._mover.setToolTip("Mover para...")
+        self._mover = botao_com_icone(t("correio.mover"), "mover")
+        self._mover.setToolTip(t("correio.mover"))
         self._mover.clicked.connect(lambda _=False: self._mover_mensagem())
         self._acoes_mensagem = (
             self._responder, self._responder_todos, self._encaminhar, self._editar_rascunho,
             self._lido, self._estrela, self._mover,
         )
-        fechar = QPushButton("Fechar")
+        fechar = QPushButton(t("geral.fechar"))
         fechar.clicked.connect(self.accept)
 
         # --- Painel 1: Barra lateral esquerda (contas, pastas, acoes globais) ---
@@ -564,7 +570,7 @@ class DialogoCorreio(QDialog):
         lat_layout.setContentsMargins(14, 16, 14, 14)
         lat_layout.setSpacing(10)
 
-        lbl_titulo = QLabel("Correio")
+        lbl_titulo = QLabel(t("correio.titulo"))
         lbl_titulo.setObjectName("tituloCorreio")
         lat_layout.addWidget(lbl_titulo)
         lat_layout.addWidget(self._escrever)
@@ -578,7 +584,7 @@ class DialogoCorreio(QDialog):
         lat_layout.addWidget(self._contactos)
         lat_layout.addWidget(self._configurar)
 
-        self._menu = interruptor("No menu", contas.preferencias()["bolha"])
+        self._menu = interruptor(t("geral.no_menu"), contas.preferencias()["bolha"])
         self._menu.setToolTip("Mostrar ou ocultar o botão de Correio no menu do Quadro")
         self._menu.toggled.connect(self._alterar_menu)
         lat_layout.addWidget(self._menu)
@@ -598,7 +604,7 @@ class DialogoCorreio(QDialog):
         self._pesquisa = QLineEdit()
         self._pesquisa.setPlaceholderText("Pesquisar no correio...")
         self._pesquisa.returnPressed.connect(self._pesquisar)
-        pesquisar = QPushButton("Ir")
+        pesquisar = QPushButton(t("correio.ir"))
         pesquisar.setToolTip("Pesquisar")
         pesquisar.clicked.connect(lambda _=False: self._pesquisar())
         limpar_pesquisa = QPushButton("✕")
@@ -1128,12 +1134,16 @@ class DialogoCorreio(QDialog):
         except OSError:
             self._estado.setText("Não foi possível guardar o anexo.")
             return
-        if not hasattr(os, "startfile"):
-            self._estado.setText("Abrir anexos só está disponível no Windows nesta versão.")
+        if hasattr(os, "startfile"):
+            try:
+                os.startfile(caminho)  # type: ignore[attr-defined]
+            except OSError:
+                self._estado.setText("Não foi possível abrir o anexo.")
             return
-        try:
-            os.startfile(caminho)
-        except OSError:
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(caminho))):
             self._estado.setText("Não foi possível abrir o anexo.")
 
     def _desbloquear_mensagem(self) -> None:
@@ -1266,8 +1276,9 @@ class _PreviaAoPassar(QObject):
 class DialogoContactos(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Contactos")
+        self.setWindowTitle(t("correio.contactos_titulo"))
         self.resize(520, 420)
+        adaptar_a_area_util(self)
         self._lista = QListWidget()
         self._nome = QLineEdit()
         self._nome.setPlaceholderText("Nome")
@@ -1281,17 +1292,17 @@ class DialogoContactos(QDialog):
         self._lista.setIconSize(QSize(40, 40))
         self._lista.itemDoubleClicked.connect(lambda _item: self._ficha(self._lista.currentRow()))
         self._recarregar()
-        acrescentar = QPushButton("Acrescentar")
+        acrescentar = QPushButton(t("correio.acrescentar"))
         acrescentar.clicked.connect(lambda _=False: self._acrescentar())
-        foto = QPushButton("Escolher foto...")
+        foto = QPushButton(t("correio.escolher_foto"))
         foto.clicked.connect(lambda _=False: self._escolher_foto())
-        sem_foto = QPushButton("Sem foto")
+        sem_foto = QPushButton(t("correio.sem_foto"))
         sem_foto.clicked.connect(lambda _=False: self._remover_foto())
-        remover = QPushButton("Remover selecionado")
+        remover = QPushButton(t("correio.remover_sel"))
         remover.clicked.connect(lambda _=False: self._remover())
-        ficha = QPushButton("Ficha")
+        ficha = QPushButton(t("correio.ficha"))
         ficha.clicked.connect(lambda _=False: self._ficha(self._lista.currentRow()))
-        fechar = QPushButton("Fechar")
+        fechar = QPushButton(t("geral.fechar"))
         fechar.clicked.connect(self.accept)
         formulario = QFormLayout()
         formulario.addRow("Nome:", self._nome)
@@ -1412,8 +1423,9 @@ class DialogoEscrever(QDialog):
     ) -> None:
         super().__init__(parent)
         self._fornecer_quadro = fornecer_quadro
-        self.setWindowTitle("Escrever mensagem")
+        self.setWindowTitle(t("correio.escrever_titulo"))
         self.resize(640, 480)
+        adaptar_a_area_util(self)
         self._conta = conta
         self._senha = senha
         self._regras = regras
@@ -1441,13 +1453,13 @@ class DialogoEscrever(QDialog):
         self._sublinhado.setCheckable(True)
         self._sublinhado.setStyleSheet("QPushButton { text-decoration: underline; }")
         self._sublinhado.toggled.connect(self._texto.setFontUnderline)
-        lista = botao_com_icone("Lista", "lista")
+        lista = botao_com_icone(t("correio.lista"), "lista")
         lista.clicked.connect(lambda _=False: self._texto.textCursor().createList(QTextListFormat.Style.ListDisc))
-        imagem = botao_com_icone("Imagem...", "imagem")
+        imagem = botao_com_icone(t("correio.imagem"), "imagem")
         imagem.clicked.connect(lambda _=False: self._inserir_imagem())
-        anexar = botao_com_icone("Anexar...", "anexar")
+        anexar = botao_com_icone(t("correio.anexar"), "anexar")
         anexar.clicked.connect(lambda _=False: self._anexar())
-        desenho = botao_com_icone("Anexar desenho do Quadro", "anexar")
+        desenho = botao_com_icone(t("correio.anexar_desenho"), "anexar")
         desenho.setEnabled(fornecer_quadro is not None)
         desenho.clicked.connect(lambda _=False: self._anexar_desenho())
         ferramentas = QHBoxLayout()
@@ -1456,15 +1468,15 @@ class DialogoEscrever(QDialog):
         ferramentas.addStretch(1)
         self._lista_anexos = QListWidget()
         self._lista_anexos.setMaximumHeight(90)
-        remover_anexo = botao_com_icone("Remover anexo", "remover")
+        remover_anexo = botao_com_icone(t("correio.remover_anexo"), "remover")
         remover_anexo.clicked.connect(lambda _=False: self._remover_anexo())
         self._estado = QLabel("")
         self._estado.setWordWrap(True)
-        enviar_botao = botao_com_icone("Enviar", "enviar")
+        enviar_botao = botao_com_icone(t("correio.enviar"), "enviar")
         enviar_botao.clicked.connect(lambda _=False: self._enviar())
-        rascunho_botao = botao_com_icone("Guardar rascunho", "guardar")
+        rascunho_botao = botao_com_icone(t("correio.guardar_rascunho"), "guardar")
         rascunho_botao.clicked.connect(lambda _=False: self._guardar_rascunho())
-        cancelar = botao_com_icone("Cancelar", "cancelar")
+        cancelar = botao_com_icone(t("correio.cancelar"), "cancelar")
         cancelar.clicked.connect(self.reject)
         formulario = QFormLayout()
         formulario.addRow("De:", self._de)
@@ -1690,8 +1702,9 @@ class DialogoEscrever(QDialog):
 class DialogoConfigurar(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Configurar correio")
+        self.setWindowTitle(t("correio.configurar_titulo"))
         self.resize(720, 680)
+        adaptar_a_area_util(self)
         conta_atual = contas.carregar()
         self._endereco = QLineEdit(conta_atual[0].endereco if conta_atual else "")
         self._senha = QLineEdit()
@@ -1720,12 +1733,12 @@ class DialogoConfigurar(QDialog):
         formulario.addRow("Servidor:", self._servidor)
         formulario.addRow("Protocolo:", self._protocolo)
         raiz.addLayout(formulario)
-        guardar = QPushButton("Guardar conta")
+        guardar = QPushButton(t("correio.guardar_conta"))
         guardar.clicked.connect(lambda _=False: self._guardar_conta())
         raiz.addWidget(guardar)
         entrar = QHBoxLayout()
         for provedor in oauth.PROVEDORES:
-            botao = QPushButton(f"Entrar com conta {oauth.PROVEDORES[provedor]['nome']}...")
+            botao = QPushButton(t("correio.entrar_com", nome=oauth.PROVEDORES[provedor]["nome"]))
             botao.clicked.connect(lambda _=False, p=provedor: self._entrar(p))
             entrar.addWidget(botao)
         raiz.addLayout(entrar)
@@ -1749,7 +1762,7 @@ class DialogoConfigurar(QDialog):
         self._assinatura = QPlainTextEdit(prefs["assinatura"])
         self._assinatura.setMaximumHeight(90)
         raiz.addWidget(self._assinatura)
-        guardar_assinatura = QPushButton("Guardar assinatura")
+        guardar_assinatura = QPushButton(t("correio.guardar_assinatura"))
         guardar_assinatura.clicked.connect(lambda _=False: self._guardar_assinatura())
         raiz.addWidget(guardar_assinatura)
 
@@ -1760,7 +1773,7 @@ class DialogoConfigurar(QDialog):
         self._secao_regras = QWidget()
         secao = QVBoxLayout(self._secao_regras)
         secao.setContentsMargins(0, 0, 0, 0)
-        self._repor = QPushButton("Repor regras (apaga as listas, pede o supervisor)")
+        self._repor = QPushButton(t("correio.repor_regras"))
         self._repor.clicked.connect(lambda _=False: self._repor_regras())
         secao.addWidget(self._repor)
         for nome, titulo in (
@@ -1773,7 +1786,7 @@ class DialogoConfigurar(QDialog):
             self._listas[nome] = lista
             linha = QHBoxLayout()
             linha.addWidget(lista, 1)
-            acrescentar = QPushButton("Acrescentar...")
+            acrescentar = QPushButton(t("correio.acrescentar_ret"))
             acrescentar.clicked.connect(lambda _=False, n=nome: self._acrescentar(n))
             remover = QPushButton("Remover")
             remover.clicked.connect(lambda _=False, n=nome: self._remover(n))

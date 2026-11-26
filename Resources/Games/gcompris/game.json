@@ -32,7 +32,8 @@
       "tipo": "pacote_oficial",
       "fonte": "https://download.kde.org/stable/gcompris/qt/linux/gcompris-qt-26.2-Linux64.sh",
       "ficheiro": "gcompris-qt-26.2-Linux64.sh",
-      "nota": "Hash ainda não registado; não usado pelo Quadro (Windows apenas)."
+      "sha256": "0c73bcf93f3aa52698a1bb00c3fa19b2c17fbd751407a981ced9f390ca62db0a",
+      "executavel": "gcompris-qt.sh"
     }
   },
   "screenshots": []

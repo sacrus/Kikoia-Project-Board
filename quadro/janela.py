@@ -42,6 +42,7 @@ from PySide6.QtWidgets import (
 )
 
 from quadro.correio.modelo import Anexo
+from quadro.idiomas import t
 from quadro.desenho import (
     EXTENSAO,
     caminho_do_traco,
@@ -790,59 +791,65 @@ class Menu(QWidget):
         self._grelha.setContentsMargins(0, 0, 0, 0)
         self._tamanho = TAMANHO_MAX_BOLHA
         self._botoes: list[QPushButton] = []
+        self._chaves_dica: list[tuple[QPushButton, str]] = []
         self._caneta = self._bolha(
-            "caneta", "Caneta", lambda _=False: self._ferramenta_com_tamanhos("caneta", self._caneta))
+            "caneta", "menu.caneta", lambda _=False: self._ferramenta_com_tamanhos("caneta", self._caneta))
         self._borracha = self._bolha(
-            "borracha", "Borracha", lambda _=False: self._ferramenta_com_tamanhos("borracha", self._borracha)
+            "borracha", "menu.borracha", lambda _=False: self._ferramenta_com_tamanhos("borracha", self._borracha)
         )
-        self._borracha_riscos = self._bolha("", "Borracha de riscos", lambda _=False: self._ferramenta_com_tamanhos("borracha_riscos", self._borracha_riscos))
+        self._borracha_riscos = self._bolha("", "menu.borracha_riscos", lambda _=False: self._ferramenta_com_tamanhos("borracha_riscos", self._borracha_riscos))
         self._borracha_riscos.setIcon(QIcon(icones.desenhar("borracha_riscos")))
         self._varinha = self._bolha(
-            "varinha", "Varinha mágica", lambda _=False: self._escolher_ferramenta("varinha"))
-        self._texto_botao = self._bolha("", "Escrever texto", lambda _=False: self._escolher_ferramenta("texto"))
+            "varinha", "menu.varinha", lambda _=False: self._escolher_ferramenta("varinha"))
+        self._texto_botao = self._bolha("", "menu.texto", lambda _=False: self._escolher_ferramenta("texto"))
         self._texto_botao.setIcon(QIcon(textos.icone()))
         self._balde = self._bolha(
-            "balde", "Balde de tinta", lambda _=False: self._escolher_ferramenta("balde"))
+            "balde", "menu.balde", lambda _=False: self._escolher_ferramenta("balde"))
         self._forma_botao = self._bolha(
-            "forma", "Formas", lambda _=False: self._mostrar_formas())
+            "forma", "menu.formas", lambda _=False: self._mostrar_formas())
         self._carimbo = self._bolha(
-            "carimbo", "Carimbos", lambda _=False: self._mostrar_carimbos())
+            "carimbo", "menu.carimbos", lambda _=False: self._mostrar_carimbos())
         self._magia = self._bolha(
-            "magia", "Pincel mágico", lambda _=False: self._mostrar_efeitos())
+            "magia", "menu.magia", lambda _=False: self._mostrar_efeitos())
         self._cor = self._bolha(
-            "cor", "Cor", lambda _=False: self._mostrar_paleta())
+            "cor", "menu.cor", lambda _=False: self._mostrar_paleta())
         self._desfazer_botao = self._bolha(
-            "desfazer", "Desfazer (Ctrl+Z)", lambda _=False: janela.desfazer())
+            "desfazer", "menu.desfazer", lambda _=False: janela.desfazer())
         self._refazer_botao = self._bolha(
-            "refazer", "Refazer (Ctrl+Y)", lambda _=False: janela.refazer())
+            "refazer", "menu.refazer", lambda _=False: janela.refazer())
         self._apagar_botao = self._bolha(
-            "apagar", "Apagar seleção (Delete)", lambda _=False: janela.apagar_selecao())
+            "apagar", "menu.apagar", lambda _=False: janela.apagar_selecao())
         self._jogos = self._bolha(
-            "jogos", "Jogos", lambda _=False: janela.abrir_jogos())
+            "jogos", "menu.jogos", lambda _=False: janela.abrir_jogos())
         if not menu_prefs.ler()["jogos"]:
             self._jogos.hide()
         self._correio = self._bolha(
-            "correio", "Correio", lambda _=False: janela.abrir_correio())
+            "correio", "menu.correio", lambda _=False: janela.abrir_correio())
         self._bolha(
-            "definicoes", "Definições", lambda _=False: janela.abrir_definicoes())
+            "definicoes", "menu.definicoes", lambda _=False: janela.abrir_definicoes())
         self._bolha(
-            "pesquisar", "Pesquisar imagens", lambda _=False: janela.pesquisar_imagens())
+            "pesquisar", "menu.pesquisar", lambda _=False: janela.pesquisar_imagens())
         self._bolha(
-            "ocultar", "Ocultar menu", lambda _=False: janela.ocultar_menu())
+            "ocultar", "menu.ocultar", lambda _=False: janela.ocultar_menu())
         self._escolher_ferramenta("caneta")
         self.tela.alterou.connect(self.atualizar_estados)
         self.atualizar_estados()
         self.ajustar(480)
 
-    def _bolha(self, simbolo: str, dica: str, acao: Callable) -> QPushButton:
+    def _bolha(self, simbolo: str, chave_dica: str, acao: Callable) -> QPushButton:
         botao = _BotaoEsfera()
         if simbolo:
             botao.setIcon(QIcon(icones.desenhar(simbolo)))
-        botao.setToolTip(dica)
+        botao.setToolTip(t(chave_dica))
         botao.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         botao.clicked.connect(acao)
         self._botoes.append(botao)
+        self._chaves_dica.append((botao, chave_dica))
         return botao
+
+    def retraduzir(self) -> None:
+        for botao, chave in self._chaves_dica:
+            botao.setToolTip(t(chave))
 
     def ajustar(self, altura_disponivel: int) -> None:
         """Escolhe o tamanho das bolhas e o número de colunas para o menu caber na altura disponível."""
@@ -1055,7 +1062,7 @@ class Menu(QWidget):
         self._paleta = paleta
         grelha = QGridLayout(paleta)
         automatica = QPushButton("A")
-        automatica.setToolTip("Automática")
+        automatica.setToolTip(t("menu.cor_automatica"))
         automatica.setFixedSize(36, 36)
         automatica.clicked.connect(lambda _=False: self._definir_cor(None))
         grelha.addWidget(automatica, 0, 0)
@@ -1064,7 +1071,7 @@ class Menu(QWidget):
             amostra.clicked.connect(lambda _=False, c=cor: self._definir_cor(c))
             grelha.addWidget(amostra, indice // 4, indice % 4)
         outra = QPushButton("…")
-        outra.setToolTip("Outra cor")
+        outra.setToolTip(t("menu.outra_cor"))
         outra.setFixedSize(36, 36)
         outra.clicked.connect(lambda _=False: self._outra_cor())
         grelha.addWidget(outra, 2, 0)
@@ -1294,133 +1301,7 @@ def _estilo_definicoes_quadro(escuro: bool) -> str:
     )
 
 
-class DialogoDefinicoes(QDialog):
-    def __init__(self, janela: JanelaQuadro) -> None:
-        super().__init__(janela)
-        self.setWindowTitle("Definições")
-        self.janela = janela
-        self.quadro = janela.quadro
-        self.tela = janela.tela
-        raiz = QVBoxLayout(self)
-        raiz.setContentsMargins(18, 16, 18, 16)
-        raiz.setSpacing(10)
-
-        # Tema da interface (Claro / Escuro), sincronizado com todo o Quadro e com o Teclado Kikoia.
-        raiz.addWidget(QLabel("Tema (Quadro e Teclado)"))
-        linha_tema = QHBoxLayout()
-        escuro_atual = tema_partilhado.e_escuro()
-        self._botao_claro = QPushButton("☀ Claro")
-        self._botao_claro.setCheckable(True)
-        self._botao_claro.setChecked(not escuro_atual)
-        self._botao_claro.clicked.connect(lambda _=False: self._definir_tema(False))
-        self._botao_escuro = QPushButton("☾ Escuro")
-        self._botao_escuro.setCheckable(True)
-        self._botao_escuro.setChecked(escuro_atual)
-        self._botao_escuro.clicked.connect(lambda _=False: self._definir_tema(True))
-        linha_tema.addWidget(self._botao_claro, 1)
-        linha_tema.addWidget(self._botao_escuro, 1)
-        raiz.addLayout(linha_tema)
-        self.setStyleSheet(_estilo_definicoes_quadro(escuro_atual))
-
-        raiz.addWidget(QLabel("Cor de fundo"))
-        linha = QHBoxLayout()
-        for cor in CORES_FUNDO:
-            amostra = _amostra(cor, 40)
-            amostra.setToolTip(cor)
-            amostra.clicked.connect(lambda _=False, c=cor: self._definir_fundo(c))
-            linha.addWidget(amostra)
-        outra = QPushButton("Outra...")
-        outra.clicked.connect(lambda _=False: self._outra_cor())
-        linha.addWidget(outra)
-        raiz.addLayout(linha)
-
-        raiz.addWidget(QLabel("Desenho"))
-        ficheiros = QHBoxLayout()
-        for texto, acao in (
-            ("Gravar...", janela.gravar),
-            ("Abrir...", janela.abrir),
-        ):
-            botao = QPushButton(texto)
-            botao.clicked.connect(lambda _=False, a=acao: a())
-            ficheiros.addWidget(botao)
-        exportar = QPushButton("Exportar...")
-        exportar.setCheckable(True)
-        ficheiros.addWidget(exportar)
-        raiz.addLayout(ficheiros)
-        formatos_linha = QWidget()
-        formatos = QHBoxLayout(formatos_linha)
-        formatos.setContentsMargins(0, 0, 0, 0)
-        for texto, acao in (("JXL", janela.exportar_jxl), ("PNG", janela.exportar_png), ("SVG", janela.exportar_svg)):
-            botao = QPushButton(texto)
-            botao.clicked.connect(lambda _=False, a=acao: a())
-            formatos.addWidget(botao)
-        formatos_linha.setVisible(False)
-        exportar.toggled.connect(formatos_linha.setVisible)
-        raiz.addWidget(formatos_linha)
-        partilhar = QPushButton("Partilhar desenho por email...")
-        partilhar.clicked.connect(lambda _=False: janela.partilhar_por_email())
-        raiz.addWidget(partilhar)
-
-        imagem = QHBoxLayout()
-        for texto, acao in (
-            ("Importar imagem...", janela.importar_imagem),
-            ("Pesquisar imagens...", janela.pesquisar_imagens),
-            ("Remover imagem", janela.remover_imagem),
-        ):
-            botao = QPushButton(texto)
-            botao.clicked.connect(lambda _=False, a=acao: a())
-            imagem.addWidget(botao)
-        raiz.addLayout(imagem)
-
-        acessos = QHBoxLayout()
-        for texto, acao in (("Jogos...", janela.abrir_jogos), ("Correio...", janela.abrir_correio)):
-            botao = QPushButton(texto)
-            botao.clicked.connect(lambda _=False, a=acao: a())
-            acessos.addWidget(botao)
-        raiz.addLayout(acessos)
-
-        limpar = QPushButton("Limpar quadro")
-        limpar.clicked.connect(lambda _=False: self._limpar())
-        raiz.addWidget(limpar)
-        sair = QPushButton("Sair do Quadro")
-        sair.setStyleSheet(
-            "QPushButton { background: #dc2626; color: white; border: none; border-radius: 8px; padding: 8px 14px; font-weight: bold; }"
-            " QPushButton:hover, QPushButton:pressed { background: #b91c1c; }"
-        )
-        sair.clicked.connect(lambda _=False: self._sair())
-        raiz.addWidget(sair)
-        fechar = QPushButton("Fechar")
-        fechar.clicked.connect(self.accept)
-        raiz.addWidget(fechar)
-
-    def _definir_tema(self, escuro: bool) -> None:
-        tema_partilhado.guardar_tema(escuro)
-        self._botao_claro.setChecked(not escuro)
-        self._botao_escuro.setChecked(escuro)
-        self.setStyleSheet(_estilo_definicoes_quadro(escuro))
-
-    def _definir_fundo(self, cor: str) -> None:
-        if cor == self.quadro.fundo:
-            return
-        self.quadro.registar()
-        self.quadro.fundo = cor
-        self.tela.update()
-
-    def _outra_cor(self) -> None:
-        escolhida = QColorDialog.getColor(QColor(self.quadro.fundo), self, "Cor de fundo")
-        if escolhida.isValid():
-            self._definir_fundo(escolhida.name())
-
-    def _limpar(self) -> None:
-        self.quadro.registar()
-        self.quadro.limpar()
-        self.tela.limpar_selecao()
-        self.tela.alterou.emit()
-        self.tela.update()
-
-    def _sair(self) -> None:
-        self.janela.close()
-        self.accept()
+from quadro.definicoes import DialogoDefinicoes  # noqa: E402, F401
 
 
 MIME_QUADRO = "application/x-kikoia-quadro"
@@ -1442,7 +1323,7 @@ class JanelaQuadro(QWidget):
         self.menu.adjustSize()
         self.menu.raise_()
 
-        self._aviso = QLabel(AVISO_MENU, self.tela)
+        self._aviso = QLabel(t("menu.aviso"), self.tela)
         self._aviso.setStyleSheet(
             "QLabel { background: rgba(0, 0, 0, 190); color: white; font-size: 20px;"
             " padding: 14px 20px; border-radius: 12px; }"
@@ -1457,7 +1338,7 @@ class JanelaQuadro(QWidget):
         self._botao_restaurar.setIconSize(QSize(34, 34))
         self._botao_restaurar.setFixedSize(56, 56)
         self._botao_restaurar.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self._botao_restaurar.setToolTip("Mostrar menu")
+        self._botao_restaurar.setToolTip(t("menu.mostrar"))
         self._botao_restaurar.setStyleSheet(_estilo_bolha(56))
         self._botao_restaurar.move(16, 16)
         self._botao_restaurar.clicked.connect(lambda _=False: self.mostrar_menu())
@@ -1467,7 +1348,7 @@ class JanelaQuadro(QWidget):
         self._botao_minimizar.setIconSize(QSize(28, 28))
         self._botao_minimizar.setFixedSize(48, 48)
         self._botao_minimizar.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self._botao_minimizar.setToolTip("Minimizar")
+        self._botao_minimizar.setToolTip(t("menu.minimizar"))
         self._botao_minimizar.setStyleSheet(_estilo_minimizar())
         self._botao_minimizar.clicked.connect(lambda _=False: self.showMinimized())
         self._botao_minimizar.raise_()
@@ -1498,6 +1379,12 @@ class JanelaQuadro(QWidget):
         QShortcut(QKeySequence(Qt.Key.Key_Delete), self).activated.connect(self.apagar_selecao)
         QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self.gravar)
         QShortcut(QKeySequence("Ctrl+O"), self).activated.connect(self.abrir)
+
+    def retraduzir(self) -> None:
+        self.menu.retraduzir()
+        self._aviso.setText(t("menu.aviso"))
+        self._botao_restaurar.setToolTip(t("menu.mostrar"))
+        self._botao_minimizar.setToolTip(t("menu.minimizar"))
 
     def ajustar_a_area_util(self) -> None:
         """Ocupa a área útil do monitor (sem barra de tarefas nem o teclado virtual, quando ativo).
@@ -1535,6 +1422,14 @@ class JanelaQuadro(QWidget):
 
     def abrir_jogos(self) -> None:
         DialogoJogos(self).exec()
+
+    def abrir_documentos(self) -> None:
+        from PySide6.QtWidgets import QApplication
+        from quadro.documentos.janela_documentos import DialogoDocumentos
+
+        pai = QApplication.activeModalWidget() or self
+        dlg = DialogoDocumentos(pai)
+        dlg.exec()
 
     # --- correio ---------------------------------------------------------------------
 

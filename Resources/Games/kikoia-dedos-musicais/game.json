@@ -1,0 +1,29 @@
+{
+  "id": "kikoia-dedos-musicais",
+  "nome": "Dedos Musicais",
+  "colecao": "Jogos Kikoia",
+  "publico": "Crianças",
+  "categoria": "Cognitivo e Motricidade",
+  "descricao": "Jogo cognitivo e de coordenação das duas mãos: posiciona as mãos sobre o ecrã tátil e toca nos círculos que piscam com cor e nota musical. A velocidade e o número de dedos aumentam a cada nível, com pausas musicais de descanso!",
+  "autores": [
+    "Projeto Kikoia"
+  ],
+  "copyright": "Copyright 2026 Projeto Kikoia",
+  "licenca": "Projeto Kikoia",
+  "licenca_url": "https://github.com/sacrus/Kikoia-Project-Board",
+  "site": "https://github.com/sacrus/Kikoia-Project-Board",
+  "fonte_oficial": "https://github.com/sacrus/Kikoia-Project-Board",
+  "modo": "ecra_completo",
+  "controlos": {
+    "toque": "necessario"
+  },
+  "instalacao": {
+    "windows": {
+      "tipo": "integrado",
+      "modulo": "dedos_musicais"
+    }
+  },
+  "screenshots": [
+    "screenshots/thumb.png"
+  ]
+}

@@ -12,6 +12,11 @@
       "nome": "Caminho das Letras"
     },
     {
+      "id": "kikoia-dedos-musicais",
+      "pasta": "Games/kikoia-dedos-musicais",
+      "nome": "Dedos Musicais"
+    },
+    {
       "id": "simon-blackbox",
       "pasta": "Games/simon-blackbox",
       "nome": "Black Box"

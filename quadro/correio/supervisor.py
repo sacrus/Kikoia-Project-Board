@@ -17,10 +17,9 @@ NOME_FICHEIRO = "supervisor.json"
 
 
 def pasta_dados(base: Path | None = None) -> Path:
-    if base is not None:
-        return base
-    raiz = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-    pasta = Path(raiz) / "Kikoia"
+    from quadro.paths import pasta_kikoia
+
+    pasta = pasta_kikoia(base)
     pasta.mkdir(parents=True, exist_ok=True)
     return pasta
 

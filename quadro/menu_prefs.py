@@ -10,11 +10,9 @@ PREFERENCIAS_OMISSAO = {"jogos": True}
 
 
 def _ficheiro(base: Path | None = None) -> Path:
-    if base is not None:
-        base.mkdir(parents=True, exist_ok=True)
-        return base / "menu.json"
-    raiz = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-    destino = Path(raiz) / "Kikoia" / "Quadro"
+    from quadro.paths import pasta_quadro
+
+    destino = pasta_quadro(base)
     destino.mkdir(parents=True, exist_ok=True)
     return destino / "menu.json"
 

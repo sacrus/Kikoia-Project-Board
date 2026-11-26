@@ -18,12 +18,23 @@ $app = Join-Path $dist "KikoiaQuadro"
 if (-not (Test-Path (Join-Path $raiz "ferramentas\cjxl.exe"))) { throw "Falta ferramentas\cjxl.exe (JPEG XL)." }
 if (-not (Test-Path $Iscc)) { throw "Inno Setup nao encontrado em: $Iscc" }
 
-Write-Host "1/4 Executavel (PyInstaller)..."
-$env:PYTHONUTF8 = "1"
-py -m PyInstaller --noconfirm --clean --windowed --name KikoiaQuadro --paths . `
-    --distpath $dist --workpath (Join-Path $raiz "build") --specpath (Join-Path $raiz "build") `
-    (Join-Path $PSScriptRoot "quadro_principal.py")
-if ($LASTEXITCODE -ne 0) { throw "PyInstaller falhou." }
+$modSegredos = Join-Path $raiz "quadro\_segredos_embutidos.py"
+try {
+    Write-Host "1/4 Executavel (PyInstaller)..."
+    $env:PYTHONUTF8 = "1"
+    py (Join-Path $PSScriptRoot "embutir_segredos.py")
+    $extraArgs = @()
+    if (Test-Path $modSegredos) {
+        $extraArgs += @("--hidden-import", "quadro._segredos_embutidos")
+    }
+    py -m PyInstaller --noconfirm --clean --windowed --name KikoiaQuadro --paths . `
+        --distpath $dist --workpath (Join-Path $raiz "build") --specpath (Join-Path $raiz "build") `
+        @extraArgs `
+        (Join-Path $PSScriptRoot "quadro_principal.py")
+    if ($LASTEXITCODE -ne 0) { throw "PyInstaller falhou." }
+} finally {
+    Remove-Item -Force -ErrorAction SilentlyContinue $modSegredos
+}
 
 Write-Host "2/4 Ferramentas JPEG XL (libjxl, licenca BSD-3)..."
 $ferr = Join-Path $app "ferramentas"
