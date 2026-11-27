@@ -12,8 +12,12 @@ param(
 $ErrorActionPreference = "Stop"
 $raiz = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 Set-Location $raiz
-$dist = Join-Path $raiz "dist"
+$tmp = Join-Path $env:TEMP "kikoia_quadro_build"
+$dist = Join-Path $tmp "dist"
+$work = Join-Path $tmp "work"
+$saida = Join-Path $raiz "dist"
 $app = Join-Path $dist "KikoiaQuadro"
+New-Item -ItemType Directory -Force -Path $saida | Out-Null
 
 if (-not (Test-Path (Join-Path $raiz "ferramentas\cjxl.exe"))) { throw "Falta ferramentas\cjxl.exe (JPEG XL)." }
 if (-not (Test-Path $Iscc)) { throw "Inno Setup nao encontrado em: $Iscc" }
@@ -27,8 +31,15 @@ try {
     if (Test-Path $modSegredos) {
         $extraArgs += @("--hidden-import", "quadro._segredos_embutidos")
     }
-    py -m PyInstaller --noconfirm --clean --windowed --name KikoiaQuadro --paths . `
-        --distpath $dist --workpath (Join-Path $raiz "build") --specpath (Join-Path $raiz "build") `
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $tmp
+    py -m PyInstaller --noconfirm --windowed --name KikoiaQuadro --paths . `
+        --icon (Join-Path $raiz "Resources\Images\kikoia.ico") `
+        --add-data "$(Join-Path $raiz 'data');data" `
+        --add-data "$(Join-Path $raiz 'Resources');Resources" `
+        --hidden-import PySide6.QtSvg `
+        --hidden-import PySide6.QtPrintSupport `
+        --hidden-import PySide6.QtMultimedia `
+        --distpath $dist --workpath $work --specpath $work `
         @extraArgs `
         (Join-Path $PSScriptRoot "quadro_principal.py")
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller falhou." }
@@ -43,17 +54,17 @@ Copy-Item (Join-Path $raiz "ferramentas\*") $ferr -Force
 Copy-Item (Join-Path $PSScriptRoot "LICENCA-libjxl.txt") $app -Force
 
 Write-Host "3/4 Instalador (Inno Setup)..."
-& $Iscc "/DOrigem=$app" "/DSaida=$dist" "/DVersao=$Versao" (Join-Path $PSScriptRoot "kikoia_quadro.iss")
+& $Iscc "/DOrigem=$app" "/DSaida=$saida" "/DVersao=$Versao" (Join-Path $PSScriptRoot "kikoia_quadro.iss")
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup falhou." }
 
 Write-Host "4/4 Pacote para transferencia (zip com SHA-256)..."
-$zip = Join-Path $dist "Kikoia-Quadro-Windows.zip"
+$zip = Join-Path $saida "Kikoia-Quadro-Windows.zip"
 Remove-Item $zip -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $app "*") -DestinationPath $zip
 $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
-"$hash  Kikoia-Quadro-Windows.zip" | Set-Content (Join-Path $dist "Kikoia-Quadro-Windows.zip.sha256") -Encoding ASCII
+"$hash  Kikoia-Quadro-Windows.zip" | Set-Content (Join-Path $saida "Kikoia-Quadro-Windows.zip.sha256") -Encoding ASCII
 
 Write-Host "Concluido."
-Write-Host "  Instalador: $dist\Kikoia-Quadro-Windows-Setup-$Versao.exe"
+Write-Host "  Instalador: $saida\Kikoia-Quadro-Windows-Setup-$Versao.exe"
 Write-Host "  Pacote:     $zip"
 Write-Host "  SHA-256:    $hash"

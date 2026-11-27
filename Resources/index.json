@@ -17,6 +17,11 @@
       "nome": "Dedos Musicais"
     },
     {
+      "id": "kikoia-labirintos",
+      "pasta": "Games/kikoia-labirintos",
+      "nome": "Labirintos Mágicos"
+    },
+    {
       "id": "simon-blackbox",
       "pasta": "Games/simon-blackbox",
       "nome": "Black Box"

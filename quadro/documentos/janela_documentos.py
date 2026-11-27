@@ -839,10 +839,12 @@ class DialogoDocumentos(QDialog):
         self._atualizar_botoes_cor()
         self._atualizar_navegacao()
         self.setStyleSheet(_estilo_documentos(self._escuro))
+        self._encerrado = False
+        self._sinais_fundo: list[_SinalFundo] = []
         self._adaptador_area = adaptar_a_area_util(self, maximizar=True, ignorar_se=lambda: self._modo_exame)
-        ecra_ini = self.screen() or QGuiApplication.primaryScreen()
-        if ecra_ini is not None:
-            ecra_ini.availableGeometryChanged.connect(lambda _a: self._aplicar_geometria_exame() if self._modo_exame else None)
+        self._ecra_exame = self.screen() or QGuiApplication.primaryScreen()
+        if self._ecra_exame is not None:
+            self._ecra_exame.availableGeometryChanged.connect(self._ao_mudar_area_exame)
 
     # --- Ferramentas e páginas ----------------------------------------------------
 
@@ -1165,17 +1167,47 @@ class DialogoDocumentos(QDialog):
                 if not self.desbloquear_modo_exame(pw):
                     QMessageBox.warning(self, t("doc.modo_exame"), t("doc.exame_pw_errada"))
 
+    def _ao_mudar_area_exame(self, _area) -> None:
+        if not self._encerrado and self._modo_exame:
+            self._aplicar_geometria_exame()
+
+    def _encerrar_recursos(self) -> None:
+        """Para temporizadores, desliga sinais de ecrã e impede callbacks de threads após fechar."""
+        if self._encerrado:
+            return
+        self._encerrado = True
+        self.canvas.confirmar_texto_inline()
+        self._timer_relogio.stop()
+        self._timer_vigia_exame.stop()
+        voz.parar()
+        if self._ecra_exame is not None:
+            try:
+                self._ecra_exame.availableGeometryChanged.disconnect(self._ao_mudar_area_exame)
+            except (RuntimeError, TypeError):
+                pass
+            self._ecra_exame = None
+        if hasattr(self, "_adaptador_area") and self._adaptador_area is not None:
+            self._adaptador_area._desligar()
+
     def _tentar_fechar(self) -> None:
         if self._modo_exame:
             QMessageBox.warning(self, t("doc.modo_exame"), t("doc.exame_bloqueado"))
             return
         self.accept()
 
+    def done(self, resultado: int) -> None:  # noqa: N802
+        if self._modo_exame:
+            self._estado.setText(t("doc.exame_bloqueado"))
+            return
+        self._encerrar_recursos()
+        super().done(resultado)
+
     def reject(self) -> None:
         # Bloqueia fechar com tecla ESC durante o Modo Exame!
         if self._modo_exame:
             self._estado.setText(t("doc.exame_bloqueado"))
             return
+        self._encerrar_recursos()
         super().reject()
 
     def closeEvent(self, evento) -> None:  # noqa: N802
@@ -1184,18 +1216,33 @@ class DialogoDocumentos(QDialog):
             evento.ignore()
             self._estado.setText(t("doc.exame_bloqueado"))
             return
-        voz.parar()
+        self._encerrar_recursos()
         super().closeEvent(evento)
 
     def _correr_fundo(self, trabalho, ao_terminar) -> None:
         sinal = _SinalFundo(self)
-        sinal.terminou.connect(ao_terminar, Qt.ConnectionType.QueuedConnection)
+        self._sinais_fundo.append(sinal)
+
+        def _entregar(res) -> None:
+            try:
+                self._sinais_fundo.remove(sinal)
+            except ValueError:
+                pass
+            if not self._encerrado:
+                ao_terminar(res)
+
+        sinal.terminou.connect(_entregar, Qt.ConnectionType.QueuedConnection)
 
         def _exec() -> None:
             try:
                 res = ("ok", trabalho())
             except Exception as erro:
                 res = ("erro", str(erro))
-            sinal.terminou.emit(res)
+            if self._encerrado:
+                return
+            try:
+                sinal.terminou.emit(res)
+            except RuntimeError:
+                pass
 
         threading.Thread(target=_exec, daemon=True, name="quadro-doc").start()

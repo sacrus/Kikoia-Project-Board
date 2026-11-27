@@ -43,6 +43,7 @@ from PySide6.QtWidgets import (
 )
 
 from quadro import idiomas, tema_partilhado
+from quadro.correio import voz
 from quadro.idiomas import t
 from quadro.jogos import sons
 
@@ -139,7 +140,8 @@ class AreaDedosMusicais(QWidget):
         self.nivel = 1
         self.ronda_atual = 0
         self.total_rondas = 5
-        self.estado = "pronto"  # "pronto", "ativo", "erro", "descanso"
+        self.estado = "pronto"  # "pronto", "tutorial_1", "tutorial_2", "tutorial_ok", "ativo", "erro", "descanso"
+        self._tempo_tutorial_ok = 0.0
 
         self._pads: list[_PadDedo] = []
         self._palmas: list[tuple[str, QRectF]] = []
@@ -204,7 +206,42 @@ class AreaDedosMusicais(QWidget):
         self.estado_alterado.emit("Posiciona as duas mãos sobre o ecrã e carrega em «Começar»!")
         self.update()
 
+    def _falar_se_visivel(self, texto: str) -> None:
+        if self.som_ativo and self.isVisible():
+            try:
+                voz.falar(texto)
+            except Exception:
+                pass
+
+    def iniciar_tutorial(self, falar: bool = True) -> None:
+        """Tutorial passo a passo simples para crianças."""
+        self._timer_som_ronda.stop()
+        self._alvos.clear()
+        self._acertados.clear()
+        self._dedo_erro = None
+        self._ondas.clear()
+        self.estado = "tutorial_1"
+        self._ignorar_ate = time.monotonic() + 0.65
+        msg = t("dedos.tut_1")
+        self.estado_alterado.emit(msg)
+        if falar:
+            self._falar_se_visivel(msg)
+        self.update()
+
+    def _avancar_tutorial_passo_2(self) -> None:
+        self.estado = "tutorial_2"
+        self._ignorar_ate = time.monotonic() + 0.35
+        self._acertados.clear()
+        self._dedo_erro = None
+        dedo_demo = 3 if self.modo_maos == "so_esquerda" else 6
+        self._alvos = {dedo_demo}
+        msg = t("dedos.tut_2")
+        self.estado_alterado.emit(msg)
+        self._falar_se_visivel(msg)
+        self.update()
+
     def comecar(self) -> None:
+        voz.parar()
         self._ignorar_ate = time.monotonic() + 0.22
         self.iniciar_nivel(1)
 
@@ -333,6 +370,10 @@ class AreaDedosMusicais(QWidget):
             self._tempo_erro -= dt
             if self._tempo_erro <= 0.0:
                 self.iniciar_nivel(self.nivel)
+        elif self.estado == "tutorial_ok":
+            self._tempo_tutorial_ok -= dt
+            if self._tempo_tutorial_ok <= 0.0:
+                self.iniciar_nivel(1)
         elif self.estado == "descanso":
             self._tempo_descanso -= dt
             self._notas_flutuantes = [(x, y - vel * 1.4, vel, c) for (x, y, vel, c) in self._notas_flutuantes]
@@ -459,11 +500,15 @@ class AreaDedosMusicais(QWidget):
         agora = time.monotonic()
         if agora < self._ignorar_ate:
             return
+        if self.estado == "tutorial_1":
+            if evento.type() == QEvent.Type.TouchBegin:
+                self._avancar_tutorial_passo_2()
+            return
         if self.estado == "pronto":
             if evento.type() == QEvent.Type.TouchBegin:
                 self.comecar()
             return
-        if self.estado != "ativo":
+        if self.estado not in ("ativo", "tutorial_2"):
             return
         for pt in evento.points():
             if pt.state() == pt.State.Pressed:
@@ -482,25 +527,35 @@ class AreaDedosMusicais(QWidget):
             evento.accept()
             return
         if evento.button() == Qt.MouseButton.LeftButton:
-            if self.estado == "pronto":
+            if self.estado == "tutorial_1":
+                self._avancar_tutorial_passo_2()
+            elif self.estado == "pronto":
                 self.comecar()
-            elif self.estado == "ativo":
+            elif self.estado in ("ativo", "tutorial_2"):
                 self._processar_toque_em(evento.position())
         super().mousePressEvent(evento)
 
     def keyPressEvent(self, evento: QKeyEvent) -> None:  # noqa: N802
-        if evento.isAutoRepeat():
-            return
-        tecla = evento.key()
-        if tecla in (Qt.Key.Key_Space, Qt.Key.Key_Return, Qt.Key.Key_Enter) and self.estado == "pronto":
-            self.comecar()
+        if evento.isAutoRepeat() or time.monotonic() < self._ignorar_ate:
             evento.accept()
             return
-        idx = self._MAPA_TECLAS_DEDOS.get(Qt.Key(tecla))
-        if idx is not None:
+        tecla = evento.key()
+        if tecla in (Qt.Key.Key_Space, Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if self.estado == "tutorial_1":
+                self._avancar_tutorial_passo_2()
+                evento.accept()
+                return
             if self.estado == "pronto":
                 self.comecar()
-            elif self.estado == "ativo":
+                evento.accept()
+                return
+        idx = self._MAPA_TECLAS_DEDOS.get(Qt.Key(tecla))
+        if idx is not None:
+            if self.estado == "tutorial_1":
+                self._avancar_tutorial_passo_2()
+            elif self.estado == "pronto":
+                self.comecar()
+            elif self.estado in ("ativo", "tutorial_2"):
                 self._processar_indice_dedo(idx)
             evento.accept()
             return
@@ -556,6 +611,25 @@ class AreaDedosMusicais(QWidget):
         pad = self._pad_por_indice(idx)
         if pad is None:
             return
+        if self.estado == "tutorial_2":
+            if idx in self._alvos:
+                self._acertados.add(idx)
+                self._flash_acertos[idx] = 0.35
+                self._ondas.append(_Onda(pad.centro_pad.x(), pad.centro_pad.y(), QColor(_CORES_DEDOS[idx])))
+                if self.som_ativo:
+                    sons.tocar_acorde([idx])
+                self.estado = "tutorial_ok"
+                self._tempo_tutorial_ok = 2.2
+                msg = t("dedos.tut_ok")
+                self.estado_alterado.emit(msg)
+                self._falar_se_visivel(msg)
+                self.update()
+            else:
+                msg = t("dedos.tut_erro")
+                self.estado_alterado.emit(msg)
+                self._falar_se_visivel(msg)
+                self.update()
+            return
         agora = time.monotonic()
         if idx in self._alvos:
             if idx not in self._acertados:
@@ -564,10 +638,8 @@ class AreaDedosMusicais(QWidget):
                 self._ondas.append(_Onda(pad.centro_pad.x(), pad.centro_pad.y(), QColor(_CORES_DEDOS[idx])))
                 completou = self._acertados == self._alvos
                 if self.som_ativo:
-                    if completou:
-                        sons.tocar_ding()
-                    else:
-                        sons.tocar_acorde([idx])
+                    # Toca sempre a nota musical exata do dedo tocado!
+                    sons.tocar_acorde([idx])
                 if completou:
                     # Protege brevemente os dedos acabados de tocar contra duplo toque involuntário!
                     self._protecao_dedos = (set(self._alvos), agora + 0.25)
@@ -757,6 +829,21 @@ class AreaDedosMusicais(QWidget):
                 t("dedos.instrucao"),
             )
 
+        elif self.estado in ("tutorial_1", "tutorial_2", "tutorial_ok"):
+            caixa = QRectF(w * 0.16, h * 0.06, w * 0.68, 92)
+            cor_bg = QColor(16, 185, 129, 240) if self.estado == "tutorial_ok" else QColor(37, 99, 235, 238)
+            p.setBrush(cor_bg)
+            p.setPen(QPen(QColor("#FFFFFF"), 2.5))
+            p.drawRoundedRect(caixa, 18, 18)
+            p.setPen(QColor("#FFFFFF"))
+            p.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
+            chave = {"tutorial_1": "dedos.tut_1", "tutorial_2": "dedos.tut_2", "tutorial_ok": "dedos.tut_ok"}[self.estado]
+            p.drawText(
+                caixa.adjusted(16, 8, -16, -8),
+                Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap,
+                t(chave),
+            )
+
         elif self.estado == "descanso":
             # Notas musicais a flutuar suavemente
             p.setFont(QFont("Segoe UI", 22, QFont.Weight.Bold))
@@ -821,6 +908,10 @@ class DialogoDedosMusicais(QDialog):
         self._combo_tamanho.setCurrentIndex(1)
         self._combo_tamanho.currentIndexChanged.connect(self._mudar_tamanho_maos)
 
+        btn_instr = QPushButton(t("jogos.instrucoes_voz"))
+        btn_instr.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_instr.clicked.connect(self._falar_instrucoes)
+
         btn_reiniciar = QPushButton(t("dedos.reiniciar"))
         btn_reiniciar.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_reiniciar.clicked.connect(lambda: self.area.reiniciar_jogo())
@@ -844,6 +935,7 @@ class DialogoDedosMusicais(QDialog):
         cab_lay.addStretch(1)
         cab_lay.addWidget(self._combo_modo)
         cab_lay.addWidget(self._combo_tamanho)
+        cab_lay.addWidget(btn_instr)
         cab_lay.addWidget(btn_reiniciar)
         cab_lay.addWidget(self._btn_som)
         cab_lay.addWidget(self._btn_ecra)
@@ -872,7 +964,9 @@ class DialogoDedosMusicais(QDialog):
     def iniciar_ecra_completo(self) -> None:
         """Ativa modo de área útil completa compatível com Windows e gestores X11/Wayland no Linux."""
         self._ecra_completo = True
+        self.area.iniciar_tutorial(falar=False)
         self._btn_ecra.setText(t("geral.sair_ecra_completo"))
+        QTimer.singleShot(450, self._falar_instrucoes_se_ativo)
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
         self._aplicar_geometria_ecra()
 
@@ -899,12 +993,31 @@ class DialogoDedosMusicais(QDialog):
             QTimer.singleShot(0, self._aplicar_geometria_ecra)
         self.area.setFocus()
 
-    def closeEvent(self, evento) -> None:  # noqa: N802
+    def _falar_instrucoes(self) -> None:
+        self.area.iniciar_tutorial(falar=True)
+
+    def _falar_instrucoes_se_ativo(self) -> None:
+        if self.isVisible() and self.area.som_ativo:
+            self.area._falar_se_visivel(t("dedos.tut_1"))
+
+    def _parar_jogo(self) -> None:
+        self.area._timer.stop()
+        self.area._timer_som_ronda.stop()
+        self.area.som_ativo = False
+        self.area.estado = "pronto"
         sons.parar()
+        voz.parar()
+
+    def done(self, resultado: int) -> None:  # noqa: N802
+        self._parar_jogo()
+        super().done(resultado)
+
+    def closeEvent(self, evento) -> None:  # noqa: N802
+        self._parar_jogo()
         super().closeEvent(evento)
 
     def reject(self) -> None:
-        sons.parar()
+        self._parar_jogo()
         super().reject()
 
     def accept(self) -> None:
@@ -949,6 +1062,8 @@ class DialogoDedosMusicais(QDialog):
     def _alternar_som(self, ligado: bool) -> None:
         self.area.som_ativo = ligado
         self._btn_som.setText(t("geral.som_ligado") if ligado else t("geral.som_desligado"))
+        if not ligado:
+            voz.parar()
 
     def _alternar_ecra_completo(self) -> None:
         self._ecra_completo = not self._ecra_completo

@@ -620,3 +620,37 @@ def abrir(caminho: Path, tipo: str) -> None:
         env=env_limpo,
         start_new_session=True,
     )
+
+
+def desinstalar(jogo: Jogo, pasta: Path | None = None) -> bool:
+    """Remove os ficheiros locais de um jogo externo (e lança o desinstalador do sistema no Windows, se existir)."""
+    removido = False
+    base = pasta_jogos(pasta)
+
+    # 1. Pasta dedicada do jogo em %LOCALAPPDATA%/Kikoia/Quadro/jogos/<id> (ou ~/.local/share/Kikoia/Quadro/jogos/<id>)
+    pasta_jogo = base / jogo.id
+    if pasta_jogo.exists():
+        shutil.rmtree(pasta_jogo, ignore_errors=True)
+        removido = True
+
+    # 2. Em Linux, a coleção sgt-puzzles partilha uma pasta própria
+    if sys.platform != "win32" and jogo.id.startswith("simon-"):
+        pasta_sgt = base / "sgt-puzzles"
+        if pasta_sgt.exists():
+            shutil.rmtree(pasta_sgt, ignore_errors=True)
+            removido = True
+
+    # 3. Em Windows, se o jogo tiver sido instalado no sistema por um instalador (ex.: GCompris),
+    # procura o desinstalador oficial na pasta do executável e lança-o.
+    if sys.platform == "win32" and pasta is None:
+        exe = executavel_instalado(jogo)
+        if exe is not None:
+            for diretorio in (exe.parent, exe.parent.parent):
+                for nome_uninst in ("Uninstall.exe", "uninstall.exe", "unins000.exe"):
+                    cand = diretorio / nome_uninst
+                    if cand.is_file():
+                        subprocess.run([str(cand)], check=False)
+                        removido = True
+                        return removido
+
+    return removido

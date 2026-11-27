@@ -1,0 +1,35 @@
+{
+  "id": "kikoia-labirintos",
+  "nome": "Labirintos Mágicos",
+  "colecao": "Jogos Kikoia",
+  "publico": "Crianças",
+  "categoria": "Motricidade e Lógica",
+  "descricao": "Percorre labirintos ilustrados com animais nos seus habitats, estações do ano, frutos, flores, árvores, casas e objetos do dia a dia para aperfeiçoar o traço em níveis crescentes!",
+  "autores": [
+    "Projeto Kikoia"
+  ],
+  "copyright": "Copyright 2026 Projeto Kikoia",
+  "licenca": "Projeto Kikoia",
+  "licenca_url": "https://github.com/sacrus/Kikoia-Project-Board",
+  "site": "https://github.com/sacrus/Kikoia-Project-Board",
+  "fonte_oficial": "https://github.com/sacrus/Kikoia-Project-Board",
+  "modo": "ecra_completo",
+  "controlos": {
+    "caneta": "aconselhado",
+    "toque": "aconselhado",
+    "rato": "suportado"
+  },
+  "instalacao": {
+    "windows": {
+      "tipo": "integrado",
+      "modulo": "labirintos"
+    },
+    "linux": {
+      "tipo": "integrado",
+      "modulo": "labirintos"
+    }
+  },
+  "screenshots": [
+    "screenshots/thumb.png"
+  ]
+}

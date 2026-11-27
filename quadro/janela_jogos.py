@@ -318,6 +318,16 @@ QProgressBar::chunk {{
     background-color: #2563EB;
     border-radius: 5px;
 }}
+QPushButton[papel="perigo"] {{
+    background: transparent;
+    color: #EF4444;
+    border: 1.5px solid #EF4444;
+}}
+QPushButton[papel="perigo"]:hover {{
+    background: #DC2626;
+    color: #FFFFFF;
+    border-color: #DC2626;
+}}
 """
 
 
@@ -326,7 +336,14 @@ class _CartaoJogo(QFrame):
 
     clicado = Signal(object)
 
-    def __init__(self, resumo: ResumoJogo, ao_acao: Callable[[_CartaoJogo], None], ao_reinstalar: Callable[[_CartaoJogo], None], ao_atualizar: Callable[[_CartaoJogo], None]) -> None:
+    def __init__(
+        self,
+        resumo: ResumoJogo,
+        ao_acao: Callable[[_CartaoJogo], None],
+        ao_reinstalar: Callable[[_CartaoJogo], None],
+        ao_atualizar: Callable[[_CartaoJogo], None],
+        ao_desinstalar: Callable[[_CartaoJogo], None],
+    ) -> None:
         super().__init__()
         self.setObjectName("cartaoJogo")
         self.setProperty("expandido", False)
@@ -436,9 +453,16 @@ class _CartaoJogo(QFrame):
         self.botao_atualizar.setVisible(False)
         self.botao_atualizar.clicked.connect(lambda _=False: ao_atualizar(self))
 
+        self.botao_desinstalar = QPushButton(t("jogos.btn_desinstalar"))
+        self.botao_desinstalar.setProperty("papel", "perigo")
+        self.botao_desinstalar.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.botao_desinstalar.setVisible(False)
+        self.botao_desinstalar.clicked.connect(lambda _=False: ao_desinstalar(self))
+
         botoes.addWidget(self.botao_principal)
         botoes.addWidget(self.botao_reinstalar)
         botoes.addWidget(self.botao_atualizar)
+        botoes.addWidget(self.botao_desinstalar)
         botoes.addStretch(1)
         corpo_layout.addLayout(botoes)
 
@@ -556,6 +580,7 @@ class _CartaoJogo(QFrame):
             self.botao_principal.setEnabled(True)
             self.botao_reinstalar.setVisible(False)
             self.botao_atualizar.setVisible(False)
+            self.botao_desinstalar.setVisible(False)
         elif self.executavel is not None or (not eh_pacote_linux and self.instalado is not None and not eh_instalador):
             self._badge.setText(t("jogos.badge_instalado"))
             self._badge.setStyleSheet(
@@ -566,6 +591,7 @@ class _CartaoJogo(QFrame):
             self.botao_principal.setEnabled(True)
             self.botao_reinstalar.setVisible(not eh_pacote_linux and eh_instalador and self.instalado is not None)
             self.botao_atualizar.setVisible(False)
+            self.botao_desinstalar.setVisible(True)
         elif not eh_pacote_linux and self.instalado is not None and eh_instalador:
             self._badge.setText(t("jogos.badge_instalador"))
             self._badge.setStyleSheet(
@@ -576,6 +602,7 @@ class _CartaoJogo(QFrame):
             self.botao_principal.setEnabled(True)
             self.botao_reinstalar.setVisible(False)
             self.botao_atualizar.setVisible(True)
+            self.botao_desinstalar.setVisible(True)
         elif eh_pacote_linux and (jogo.instalacao_linux is not None or jogo.instalacao_windows is not None):
             self._badge.setText(t("jogos.badge_disponivel"))
             self._badge.setStyleSheet(
@@ -586,6 +613,7 @@ class _CartaoJogo(QFrame):
             self.botao_principal.setEnabled(True)
             self.botao_reinstalar.setVisible(False)
             self.botao_atualizar.setVisible(False)
+            self.botao_desinstalar.setVisible(False)
         elif jogo.instalacao_windows is not None:
             self._badge.setText(t("jogos.badge_disponivel"))
             self._badge.setStyleSheet(
@@ -593,6 +621,7 @@ class _CartaoJogo(QFrame):
             )
             self.botao_principal.setText(t("jogos.btn_desc_instalar") if eh_instalador else t("jogos.btn_desc_iniciar"))
             self.botao_principal.setProperty("papel", "primario")
+            self.botao_desinstalar.setVisible(False)
             self.botao_principal.setEnabled(True)
             self.botao_reinstalar.setVisible(False)
             self.botao_atualizar.setVisible(eh_instalador)
@@ -791,7 +820,13 @@ class DialogoJogos(QDialog):
                 item.widget().deleteLater()
 
         for resumo in self._resumos:
-            cartao = _CartaoJogo(resumo, self._acao_cartao, self._reinstalar_cartao, self._reverificar_cartao)
+            cartao = _CartaoJogo(
+                resumo,
+                self._acao_cartao,
+                self._reinstalar_cartao,
+                self._reverificar_cartao,
+                self._desinstalar_cartao,
+            )
             cartao.clicado.connect(self._alternar_cartao)
             self._cartoes.append(cartao)
             self._layout_cartoes.insertWidget(self._layout_cartoes.count() - 1, cartao)
@@ -937,6 +972,32 @@ class DialogoJogos(QDialog):
         if cartao.jogo is None or cartao.instalado is None or self._ocupado:
             return
         self._abrir(cartao.instalado, cartao.jogo, "instalador")
+
+    def _desinstalar_cartao(self, cartao: _CartaoJogo) -> None:
+        jogo = cartao.jogo
+        if jogo is None or self._ocupado:
+            return
+        resp = QMessageBox.question(
+            self,
+            t("jogos.desinstalar_titulo"),
+            t("jogos.desinstalar_confirmar", nome=jogo.nome),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if resp != QMessageBox.StandardButton.Yes:
+            return
+        catalogo.desinstalar(jogo)
+        if sys.platform != "win32" and jogo.id.startswith("simon-"):
+            for outro in self._cartoes:
+                if outro.jogo is not None and outro.jogo.id.startswith("simon-"):
+                    outro.executavel = catalogo.executavel_instalado(outro.jogo)
+                    outro.instalado = catalogo.instalado(outro.jogo)
+                    outro.atualizar_texto_e_estado(self._escuro)
+        else:
+            cartao.executavel = catalogo.executavel_instalado(jogo)
+            cartao.instalado = catalogo.instalado(jogo)
+            cartao.atualizar_texto_e_estado(self._escuro)
+        self._estado.setText(t("jogos.desinstalado", nome=jogo.nome))
 
     def _acao_cartao(self, cartao: _CartaoJogo) -> None:
         jogo = cartao.jogo

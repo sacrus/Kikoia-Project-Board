@@ -34,6 +34,7 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\KikoiaQuadro.exe
+SetupIconFile=..\..\Resources\Images\kikoia.ico
 UninstallDisplayName={#NomeApp}
 CloseApplications=yes
 RestartApplications=no
@@ -51,8 +52,8 @@ Name: "atalho_ambiente"; Description: "Criar atalho no ambiente de trabalho"; Gr
 Source: "{#Origem}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#NomeApp}"; Filename: "{app}\KikoiaQuadro.exe"
-Name: "{autodesktop}\{#NomeApp}"; Filename: "{app}\KikoiaQuadro.exe"; Tasks: atalho_ambiente
+Name: "{group}\{#NomeApp}"; Filename: "{app}\KikoiaQuadro.exe"; AppUserModelID: "Kikoia.Quadro"
+Name: "{autodesktop}\{#NomeApp}"; Filename: "{app}\KikoiaQuadro.exe"; AppUserModelID: "Kikoia.Quadro"; Tasks: atalho_ambiente
 Name: "{group}\Desinstalar {#NomeApp}"; Filename: "{uninstallexe}"
 
 [Run]
@@ -78,4 +79,15 @@ procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
     RegistarInstalacao();
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    if (not UninstallSilent) and
+       (MsgBox('Apagar também os jogos transferidos e os dados guardados do Quadro Interativo?',
+               mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES) then
+      DelTree(ExpandConstant('{localappdata}\Kikoia\Quadro'), True, True, True);
+  end;
 end;

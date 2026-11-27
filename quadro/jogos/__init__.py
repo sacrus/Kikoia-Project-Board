@@ -11,14 +11,21 @@ def abrir_jogo_integrado(modulo: str, parent: QWidget | None = None) -> None:
         from quadro.jogos.caminho_letras import DialogoCaminhoLetras
 
         dialogo = DialogoCaminhoLetras(parent)
-        dialogo.iniciar_ecra_completo()
-        dialogo.exec()
-        return
-    if modulo == "dedos_musicais":
+    elif modulo == "dedos_musicais":
         from quadro.jogos.dedos_musicais import DialogoDedosMusicais
 
         dialogo = DialogoDedosMusicais(parent)
+    elif modulo == "labirintos":
+        from quadro.jogos.labirintos import DialogoLabirintos
+
+        dialogo = DialogoLabirintos(parent)
+    else:
+        raise ValueError(f"Jogo integrado desconhecido: {modulo}")
+
+    try:
         dialogo.iniciar_ecra_completo()
         dialogo.exec()
-        return
-    raise ValueError(f"Jogo integrado desconhecido: {modulo}")
+    finally:
+        if hasattr(dialogo, "_parar_jogo"):
+            dialogo._parar_jogo()
+        dialogo.deleteLater()

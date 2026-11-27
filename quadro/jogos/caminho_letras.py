@@ -40,6 +40,7 @@ from PySide6.QtWidgets import (
 )
 
 from quadro import idiomas, tema_partilhado
+from quadro.correio import voz
 from quadro.idiomas import t
 from quadro.jogos import caligrafia, sons
 
@@ -181,6 +182,23 @@ class AreaCaminhoLetras(QWidget):
 
     # --- Gestão de níveis e geometria ---------------------------------------------
 
+    def instrucao_caractere_atual(self) -> str:
+        """Frase simples para crianças com a letra ou o número exato do traço atual."""
+        traco = self._traco_atual()
+        car = traco.caractere if traco is not None else (self._sequencia[0] if self._sequencia else "")
+        if not car:
+            return t("caminho.voz_instrucoes")
+        if car.isdigit():
+            return t("caminho.voz_numero", valor=car)
+        return t("caminho.voz_letra", valor=car.upper())
+
+    def falar_caractere_atual(self) -> None:
+        if self.som_ativo and self.isVisible():
+            try:
+                voz.falar(self.instrucao_caractere_atual())
+            except Exception:
+                pass
+
     def iniciar_nivel(self, nivel: int, sequencia_fixa: list[str] | None = None) -> None:
         self._timer_proximo.stop()
         self.nivel = max(1, nivel)
@@ -195,6 +213,7 @@ class AreaCaminhoLetras(QWidget):
         self._reconstruir_geometria()
         seq_txt = " · ".join(self._sequencia)
         self.estado_alterado.emit(f"Nível {self.nivel} ({_NOMES_CENARIO[self._cenario]}) — Percorre: {seq_txt}")
+        self.falar_caractere_atual()
         self.update()
 
     def proximo_nivel(self) -> None:
@@ -513,11 +532,14 @@ class AreaCaminhoLetras(QWidget):
 
     def _avancar_traco(self) -> None:
         if self._traco_ativo_idx + 1 < len(self._tracos):
+            anterior = self._tracos[self._traco_ativo_idx].caractere
             self._traco_ativo_idx += 1
             if self.som_ativo:
                 sons.tocar_ding()
             proximo = self._tracos[self._traco_ativo_idx]
             self.estado_alterado.emit(f"Boa! Agora continua com «{proximo.caractere}»!")
+            if proximo.caractere != anterior:
+                self.falar_caractere_atual()
         else:
             self._concluir_nivel()
 
@@ -525,13 +547,20 @@ class AreaCaminhoLetras(QWidget):
         self._celebrando = True
         self.estrelas += len(self._sequencia)
         seq_txt = "".join(self._sequencia)
-        self._mensagem_banner = f"Parabéns! Concluíste «{seq_txt}»!"
+        elogio = t(self._rng.choice(("jogos.elogio_1", "jogos.elogio_2", "jogos.elogio_3", "jogos.elogio_4")))
+        self._mensagem_banner = f"{elogio} «{seq_txt}»"
         self.estado_alterado.emit(self._mensagem_banner)
         if self.som_ativo:
-            sons.tocar_aplausos()
+            if self.isVisible():
+                try:
+                    voz.falar(elogio)
+                except Exception:
+                    sons.tocar_aplausos()
+            else:
+                sons.tocar_aplausos()
         self._lancar_confettis()
         self.nivel_concluido.emit(self.nivel, self.estrelas)
-        self._timer_proximo.start(2400)
+        self._timer_proximo.start(2600)
 
     def _lancar_confettis(self) -> None:
         cores = [
@@ -882,6 +911,10 @@ class DialogoCaminhoLetras(QDialog):
         self._combo_modo.addItem(t("caminho.modo_numeros"), "numeros")
         self._combo_modo.currentIndexChanged.connect(self._mudar_modo)
 
+        btn_instr = QPushButton(t("jogos.instrucoes_voz"))
+        btn_instr.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_instr.clicked.connect(self._falar_instrucoes)
+
         btn_novo = QPushButton(t("caminho.novo"))
         btn_novo.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_novo.clicked.connect(lambda: self.area.novo_percurso())
@@ -904,6 +937,7 @@ class DialogoCaminhoLetras(QDialog):
         cab_lay.addWidget(self._lbl_estrelas)
         cab_lay.addStretch(1)
         cab_lay.addWidget(self._combo_modo)
+        cab_lay.addWidget(btn_instr)
         cab_lay.addWidget(btn_novo)
         cab_lay.addWidget(self._btn_som)
         cab_lay.addWidget(self._btn_ecra)
@@ -933,6 +967,7 @@ class DialogoCaminhoLetras(QDialog):
         """Ativa modo de área útil completa compatível com Windows e gestores X11/Wayland no Linux."""
         self._ecra_completo = True
         self._btn_ecra.setText(t("geral.sair_ecra_completo"))
+        QTimer.singleShot(500, self._falar_instrucoes_se_ativo)
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
         self._aplicar_geometria_ecra()
 
@@ -958,12 +993,33 @@ class DialogoCaminhoLetras(QDialog):
             self._aplicar_geometria_ecra()
             QTimer.singleShot(0, self._aplicar_geometria_ecra)
 
-    def closeEvent(self, evento) -> None:  # noqa: N802
+    def _falar_instrucoes(self) -> None:
+        try:
+            voz.falar(self.area.instrucao_caractere_atual())
+        except Exception:
+            pass
+
+    def _falar_instrucoes_se_ativo(self) -> None:
+        if self.isVisible() and self.area.som_ativo:
+            self._falar_instrucoes()
+
+    def _parar_jogo(self) -> None:
+        self.area._timer.stop()
+        self.area._timer_proximo.stop()
+        self.area.som_ativo = False
         sons.parar()
+        voz.parar()
+
+    def done(self, resultado: int) -> None:  # noqa: N802
+        self._parar_jogo()
+        super().done(resultado)
+
+    def closeEvent(self, evento) -> None:  # noqa: N802
+        self._parar_jogo()
         super().closeEvent(evento)
 
     def reject(self) -> None:
-        sons.parar()
+        self._parar_jogo()
         super().reject()
 
     def accept(self) -> None:
@@ -1005,6 +1061,8 @@ class DialogoCaminhoLetras(QDialog):
     def _alternar_som(self, ligado: bool) -> None:
         self.area.som_ativo = ligado
         self._btn_som.setText(t("geral.som_ligado") if ligado else t("geral.som_desligado"))
+        if not ligado:
+            voz.parar()
 
     def _alternar_ecra_completo(self) -> None:
         self._ecra_completo = not self._ecra_completo

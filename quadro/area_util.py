@@ -48,6 +48,13 @@ class _AdaptadorAreaUtil(QObject):
             except (RuntimeError, TypeError):
                 pass
             self._ecra_ligado = None
+        janela = getattr(self, "_janela", None)
+        if janela is not None:
+            try:
+                janela.removeEventFilter(self)
+            except RuntimeError:
+                pass
+            self._janela = None
 
     def _ecra_atual(self) -> QScreen | None:
         janela = getattr(self, "_janela", None)

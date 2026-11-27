@@ -94,8 +94,52 @@ class _ExtendedLimits(ctypes.Structure):
     ]
 
 
-def comando() -> list[str]:
-    return ["powershell", "-NoProfile", "-NonInteractive", "-Command", _SCRIPT]
+def _script_windows(idioma: str) -> str:
+    cod = (idioma or "pt-PT").strip()
+    prefixo = cod.split("-")[0].lower()
+    if prefixo not in ("pt", "en", "es", "fr"):
+        prefixo = "pt"
+    alvo_exato = "pt-PT" if cod.lower().startswith("pt") else prefixo
+    return (
+        "[Console]::InputEncoding = [Text.Encoding]::UTF8; "
+        "$texto = [Console]::In.ReadToEnd(); "
+        "if ([string]::IsNullOrWhiteSpace($texto)) { exit 0 }; "
+        "$falou = $false; "
+        "try { "
+        "  Add-Type -AssemblyName System.Runtime.WindowsRuntime; "
+        "  [Windows.Media.SpeechSynthesis.SpeechSynthesizer, Windows.Media.SpeechSynthesis, ContentType=WindowsRuntime] | Out-Null; "
+        "  $vozes = [Windows.Media.SpeechSynthesis.SpeechSynthesizer]::AllVoices; "
+        f"  $v = $vozes | Where-Object {{ $_.Language -ieq '{alvo_exato}' }} | Select-Object -First 1; "
+        f"  if (-not $v) {{ $v = $vozes | Where-Object {{ $_.Language.StartsWith('{prefixo}', [StringComparison]::OrdinalIgnoreCase) }} | Select-Object -First 1 }}; "
+        "  if ($v) { "
+        "    $synth = New-Object Windows.Media.SpeechSynthesis.SpeechSynthesizer; "
+        "    $synth.Voice = $v; "
+        "    $op = $synth.SynthesizeTextToStreamAsync($texto); "
+        "    $asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1' })[0]; "
+        "    $stream = $asTask.MakeGenericMethod([Windows.Media.SpeechSynthesis.SpeechSynthesisStream]).Invoke($null, @($op)).GetAwaiter().GetResult(); "
+        "    $netStream = [System.IO.WindowsRuntimeStreamExtensions]::AsStreamForRead($stream); "
+        "    $player = New-Object System.Media.SoundPlayer($netStream); "
+        "    $player.PlaySync(); "
+        "    $falou = $true; "
+        "  } "
+        "} catch { }; "
+        "if (-not $falou) { "
+        "  Add-Type -AssemblyName System.Speech; "
+        "  $voz = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+        f"  $sv = $voz.GetInstalledVoices() | Where-Object {{ $_.Enabled -and $_.VoiceInfo.Culture.Name -ieq '{alvo_exato}' }} | Select-Object -First 1; "
+        f"  if (-not $sv) {{ $sv = $voz.GetInstalledVoices() | Where-Object {{ $_.Enabled -and $_.VoiceInfo.Culture.Name.StartsWith('{prefixo}', [StringComparison]::OrdinalIgnoreCase) }} | Select-Object -First 1 }}; "
+        "  if ($sv) { $voz.SelectVoice($sv.VoiceInfo.Name) }; "
+        "  $voz.Speak($texto); "
+        "}"
+    )
+
+
+def comando(idioma: str | None = None) -> list[str]:
+    if idioma is None:
+        from quadro import idiomas
+
+        idioma = idiomas.atual()
+    return ["powershell", "-NoProfile", "-NonInteractive", "-Command", _script_windows(idioma)]
 
 
 def _procurar_voz_piper(idioma: str) -> tuple[Path, Path] | None:

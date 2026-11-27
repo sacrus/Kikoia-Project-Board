@@ -1429,7 +1429,11 @@ class JanelaQuadro(QWidget):
 
         pai = QApplication.activeModalWidget() or self
         dlg = DialogoDocumentos(pai)
-        dlg.exec()
+        try:
+            dlg.exec()
+        finally:
+            dlg._encerrar_recursos()
+            dlg.deleteLater()
 
     # --- correio ---------------------------------------------------------------------
 
