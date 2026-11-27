@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QProgressBar,
     QPushButton,
     QScrollArea,
@@ -977,14 +978,40 @@ class DialogoJogos(QDialog):
         jogo = cartao.jogo
         if jogo is None or self._ocupado:
             return
-        resp = QMessageBox.question(
-            self,
-            t("jogos.desinstalar_titulo"),
-            t("jogos.desinstalar_confirmar", nome=jogo.nome),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
+        caixa = QMessageBox(self)
+        caixa.setIcon(QMessageBox.Icon.Question)
+        caixa.setWindowTitle(t("jogos.desinstalar_titulo"))
+        caixa.setText(t("jogos.desinstalar_confirmar", nome=jogo.nome))
+        btn_desinstalar = caixa.addButton(t("jogos.btn_desinstalar"), QMessageBox.ButtonRole.DestructiveRole)
+        btn_cancelar = caixa.addButton(t("geral.cancelar"), QMessageBox.ButtonRole.RejectRole)
+        caixa.setDefaultButton(btn_cancelar)
+        if self._escuro:
+            caixa.setStyleSheet(
+                "QMessageBox { background: #1E293B; color: #F8FAFC; }"
+                "QMessageBox QLabel { color: #F8FAFC; font-size: 13px; background: transparent; }"
+                "QMessageBox QPushButton {"
+                "  background: #334155; color: #F8FAFC; border: 1px solid #475569;"
+                "  border-radius: 6px; padding: 6px 16px; min-width: 84px; font-weight: 600;"
+                "}"
+                "QMessageBox QPushButton:hover { background: #475569; }"
+            )
+        else:
+            caixa.setStyleSheet(
+                "QMessageBox { background: #FFFFFF; color: #0F172A; }"
+                "QMessageBox QLabel { color: #0F172A; font-size: 13px; background: transparent; }"
+                "QMessageBox QPushButton {"
+                "  background: #F1F5F9; color: #0F172A; border: 1px solid #CBD5E1;"
+                "  border-radius: 6px; padding: 6px 16px; min-width: 84px; font-weight: 600;"
+                "}"
+                "QMessageBox QPushButton:hover { background: #E2E8F0; }"
+            )
+        btn_desinstalar.setStyleSheet(
+            "QPushButton { background: #DC2626; color: #FFFFFF; border: 1px solid #B91C1C;"
+            "  border-radius: 6px; padding: 6px 16px; min-width: 84px; font-weight: 600; }"
+            "QPushButton:hover { background: #B91C1C; }"
         )
-        if resp != QMessageBox.StandardButton.Yes:
+        caixa.exec()
+        if caixa.clickedButton() is not btn_desinstalar:
             return
         catalogo.desinstalar(jogo)
         if sys.platform != "win32" and jogo.id.startswith("simon-"):
